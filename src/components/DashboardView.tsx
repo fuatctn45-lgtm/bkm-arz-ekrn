@@ -24,7 +24,7 @@ import type {
 import { CATEGORY_GROUP_ORDER } from '../utils/faultHelpers';
 import { PWAInstallButton } from './PWAInstallButton';
 import { ScaledBlock } from './ScaledBlock';
-import { ShiftTimelineRuler } from './ShiftTimelineRuler';
+import { ShiftTimelineRuler, useActiveShiftTimeline } from './ShiftTimelineRuler';
 
 interface DashboardViewProps {
   todayOpenFaults: FaultRecord[];
@@ -60,6 +60,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [selectedFault, setSelectedFault] = useState<FaultRecord | null>(null);
   const [isTopBarVisible, setIsTopBarVisible] = useState<boolean>(true);
+  const timeline = useActiveShiftTimeline(allFaults);
   const boardContainerRef = useRef<HTMLDivElement | null>(null);
   const topBarRef = useRef<HTMLDivElement | null>(null);
   const isTopBarHoveredRef = useRef<boolean>(false);
@@ -267,8 +268,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const markerRect = markerEl.getBoundingClientRect();
       if (cardRect.width === 0 || markerRect.width === 0) continue;
 
-      const x1 = (cardRect.left + cardRect.width / 2 - containerRect.left) / scale;
-      const y1 = (cardRect.top - containerRect.top) / scale - 2;
+      const anchorEl =
+        container.querySelector<HTMLElement>(`[data-card-anchor-id="${escapedId}"]`) ?? cardEl;
+      const anchorRect = anchorEl.getBoundingClientRect();
+
+      const x1 = (anchorRect.left + anchorRect.width / 2 - containerRect.left) / scale;
+      const y1 = (anchorRect.top - containerRect.top) / scale - 1;
       const x2 = (markerRect.left + markerRect.width / 2 - containerRect.left) / scale;
       const y2 = (markerRect.bottom - containerRect.top) / scale + 1;
 
@@ -616,7 +621,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <ShiftTimelineRuler
-          faults={allFaults}
+          timeline={timeline}
           fontSize={settings.rulerFontSize}
           onSelectFault={setSelectedFault}
         />
@@ -676,7 +681,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         ) : (
           <ScaledBlock scale={cardScale}>
           <div
-            className="flex flex-wrap items-stretch gap-1.5 sm:gap-2"
+            className="flex flex-wrap items-stretch gap-x-1.5 gap-y-[1.15em] sm:gap-x-2 pt-[0.85em]"
             style={{
               fontSize: `${effectiveCardFont}px`,
               lineHeight: 1.2,
@@ -686,6 +691,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           >
             {todayOpenFaults.map((fault) => {
               const timeShort = fault.timePart ? fault.timePart.substring(0, 5) : '--:--';
+              const shiftNumber = timeline.shiftNumberById.get(fault.id);
               const lowOpacityDark = settings.cardOpacity < 0.55 && settings.theme !== 'white';
               const fgColor = lowOpacityDark ? '#f8fafc' : fault.typeInfo.fgHex;
               const mutedColor = lowOpacityDark
@@ -717,8 +723,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     WebkitTextSizeAdjust: '100%',
                     textSizeAdjust: '100%',
                   }}
-                  className="group text-left rounded-lg sm:rounded-xl border shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:brightness-95 cursor-pointer flex flex-col min-w-0"
+                  className="group relative text-left rounded-lg sm:rounded-xl border shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:brightness-95 cursor-pointer flex flex-col min-w-0"
                 >
+                  {shiftNumber !== undefined && (
+                    <span
+                      data-card-anchor-id={fault.id}
+                      style={{
+                        backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
+                        color: fault.typeInfo.fgHex,
+                        borderColor: pillBorder,
+                        boxShadow: '0 0 0 2px var(--hub-bg)',
+                        fontSize: '0.84em',
+                      }}
+                      className="absolute -top-[0.8em] left-1/2 -translate-x-1/2 z-20 inline-flex h-[1.55em] min-w-[1.55em] items-center justify-center rounded-full border px-[0.35em] font-mono font-black leading-none tabular-nums shadow-sm"
+                    >
+                      {shiftNumber}
+                    </span>
+                  )}
                   <div className="flex items-center justify-between gap-2 w-full min-w-0">
                     <span
                       className="inline-flex items-center gap-1 font-extrabold uppercase tracking-wide min-w-0"

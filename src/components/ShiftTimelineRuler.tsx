@@ -1,14 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { FaultCategory, FaultRecord } from '../types';
+import type { FaultRecord } from '../types';
 import { isSameDay, parseDateComponents } from '../utils/faultHelpers';
 
-interface ShiftTimelineRulerProps {
-  faults: FaultRecord[];
-  fontSize?: number;
-  onSelectFault: (fault: FaultRecord) => void;
-}
-
-interface ShiftConfig {
+export interface ShiftConfig {
   id: 'day' | 'evening' | 'night';
   startHour: number;
   endHour: number;
@@ -18,6 +12,29 @@ interface ShiftConfig {
   majorTickBg: string;
   minorTickBg: string;
   hourTextClass: string;
+}
+
+export interface NumberedShiftFaultItem {
+  fault: FaultRecord;
+  mins: number;
+  percent: number;
+  timeShort: string;
+  shiftNumber: number;
+}
+
+export interface ActiveShiftTimeline {
+  now: Date;
+  shift: ShiftConfig;
+  shiftKey: string;
+  currentPercent: number;
+  numberedItems: NumberedShiftFaultItem[];
+  shiftNumberById: Map<string, number>;
+}
+
+interface ShiftTimelineRulerProps {
+  timeline: ActiveShiftTimeline;
+  fontSize?: number;
+  onSelectFault: (fault: FaultRecord) => void;
 }
 
 interface StoredShiftCache {
@@ -33,23 +50,6 @@ const MIN_HORIZ_GAP_PX = 18; // 16px square + 2px horizontal clearance
 const LANE_STEP_PX = 17; // 16px square + 1px vertical clearance
 const BASE_BAR_HEIGHT_PX = 28; // h-7
 const BASE_BOTTOM_OFFSET_PX = 6; // centers 16px square vertically inside 28px bar
-
-function getCategoryLetter(category: FaultCategory): string {
-  switch (category) {
-    case 'mekanik':
-      return 'M';
-    case 'elektrik':
-      return 'E';
-    case 'isg':
-      return 'İ';
-    case 'planli':
-      return 'P';
-    case 'is':
-      return 'Y';
-    default:
-      return 'D';
-  }
-}
 
 function getActiveShiftConfig(hour: number): ShiftConfig {
   if (hour >= 8 && hour < 16) {
@@ -143,40 +143,12 @@ function writeShiftCache(shiftKey: string, faults: FaultRecord[]): void {
   }
 }
 
-export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
-  faults,
-  fontSize = 11,
-  onSelectFault,
-}) => {
+export function useActiveShiftTimeline(faults: FaultRecord[]): ActiveShiftTimeline {
   const [now, setNow] = useState<Date>(() => new Date());
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const [trackWidthPx, setTrackWidthPx] = useState<number>(1200);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const el = trackRef.current;
-    if (!el) return;
-
-    const updateWidth = () => {
-      if (el.clientWidth > 0) {
-        setTrackWidthPx(el.clientWidth);
-      }
-    };
-
-    updateWidth();
-
-    if (typeof ResizeObserver !== 'undefined') {
-      const ro = new ResizeObserver(updateWidth);
-      ro.observe(el);
-      return () => ro.disconnect();
-    }
-
-    window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
   const currentHour = now.getHours();
@@ -225,8 +197,8 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
   const elapsedMin = Math.max(0, Math.min(totalSpanMin, currentMinutesOfDay - startMin));
   const currentPercent = (elapsedMin / totalSpanMin) * 100;
 
-  const { faultMarkers, maxLanes } = useMemo(() => {
-    const rawItems = cachedShiftFaults
+  const { numberedItems, shiftNumberById } = useMemo(() => {
+    const sorted = cachedShiftFaults
       .map((fault) => {
         const mins = parseTimeToMinutesInShift(fault.timePart, shift.startHour, shift.endHour);
         if (mins === null) return null;
@@ -235,14 +207,71 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
           mins,
           percent: (mins / totalSpanMin) * 100,
           timeShort: fault.timePart.substring(0, 5),
-          letter: getCategoryLetter(fault.typeInfo.category),
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null)
       .sort((a, b) => a.mins - b.mins || a.fault.timestampMs - b.fault.timestampMs);
 
+    const map = new Map<string, number>();
+    const items: NumberedShiftFaultItem[] = sorted.map((item, idx) => {
+      const shiftNumber = idx + 1;
+      map.set(item.fault.id, shiftNumber);
+      return {
+        ...item,
+        shiftNumber,
+      };
+    });
+
+    return {
+      numberedItems: items,
+      shiftNumberById: map,
+    };
+  }, [cachedShiftFaults, shift.startHour, shift.endHour, totalSpanMin]);
+
+  return {
+    now,
+    shift,
+    shiftKey,
+    currentPercent,
+    numberedItems,
+    shiftNumberById,
+  };
+}
+
+export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
+  timeline,
+  fontSize = 11,
+  onSelectFault,
+}) => {
+  const { now, shift, currentPercent, numberedItems } = timeline;
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [trackWidthPx, setTrackWidthPx] = useState<number>(1200);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    const updateWidth = () => {
+      if (el.clientWidth > 0) {
+        setTrackWidthPx(el.clientWidth);
+      }
+    };
+
+    updateWidth();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateWidth);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  const { faultMarkers, maxLanes } = useMemo(() => {
     const laneLastXPx: number[] = [];
-    const placed = rawItems.map((item) => {
+    const placed = numberedItems.map((item) => {
       const rawXPx = (item.percent / 100) * trackWidthPx;
       // Keep edges inside track bounds so first/last squares aren't clipped
       const clampedXPx = Math.max(
@@ -273,7 +302,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
       faultMarkers: placed,
       maxLanes: Math.max(1, laneLastXPx.length),
     };
-  }, [cachedShiftFaults, shift.startHour, shift.endHour, totalSpanMin, trackWidthPx]);
+  }, [numberedItems, trackWidthPx]);
 
   const trackHeightPx = Math.max(
     BASE_BAR_HEIGHT_PX,
@@ -395,8 +424,8 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
             <div className="w-[2px] flex-1 bg-rose-500/80 shadow-[0_0_6px_rgba(244,63,94,0.65)]" />
           </div>
 
-          {/* Today's Shift Fault Markers (collision-free stacked squares) */}
-          {faultMarkers.map(({ fault, percent, timeShort, letter, lane }) => (
+          {/* Today's Shift Fault Markers (collision-free numbered colored squares) */}
+          {faultMarkers.map(({ fault, percent, timeShort, shiftNumber, lane }) => (
             <button
               key={fault.id}
               type="button"
@@ -408,11 +437,11 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
                 backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
                 color: fault.typeInfo.fgHex,
               }}
-              title={`${timeShort} · ${fault.machine} (${fault.typeInfo.label}) — ${fault.description}`}
-              aria-label={`${timeShort} ${fault.machine} (${fault.typeInfo.label}) arıza detayı`}
-              className="absolute -translate-x-1/2 z-20 flex h-4 w-4 items-center justify-center rounded-[2px] text-[9px] font-black leading-none shadow-xs transition-transform hover:scale-125 hover:z-30 cursor-pointer"
+              title={`#${shiftNumber} · ${timeShort} · ${fault.machine} (${fault.typeInfo.label}) — ${fault.description}`}
+              aria-label={`#${shiftNumber} ${timeShort} ${fault.machine} (${fault.typeInfo.label}) arıza detayı`}
+              className="absolute -translate-x-1/2 z-20 flex h-4 min-w-[16px] px-[2px] items-center justify-center rounded-[2px] font-mono text-[9.5px] font-black leading-none tabular-nums shadow-xs transition-transform hover:scale-125 hover:z-30 cursor-pointer"
             >
-              {letter}
+              {shiftNumber}
             </button>
           ))}
         </div>
