@@ -1,0 +1,6 @@
+{
+  "name": "Bakım HUB",
+  "description": "Fabrika arıza takip panosu, anlık bildirimler ve operatör iş emri kapatma sistemi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

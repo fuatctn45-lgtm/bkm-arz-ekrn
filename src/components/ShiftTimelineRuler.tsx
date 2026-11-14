@@ -1,0 +1,385 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { FaultCategory, FaultRecord } from '../types';
+import { isSameDay, parseDateComponents } from '../utils/faultHelpers';
+
+interface ShiftTimelineRulerProps {
+  faults: FaultRecord[];
+  onSelectFault: (fault: FaultRecord) => void;
+}
+
+interface ShiftConfig {
+  id: 'day' | 'evening' | 'night';
+  startHour: number;
+  endHour: number;
+  backdropClass: string;
+  progressGradient: string;
+  axisBg: string;
+  majorTickBg: string;
+  minorTickBg: string;
+  hourTextClass: string;
+}
+
+interface StoredShiftCache {
+  shiftKey: string;
+  faults: FaultRecord[];
+}
+
+const SHIFT_CACHE_KEY = 'hub-shift-ruler-cache-v1';
+const SHIFT_HOURS = 8;
+const TOTAL_QUARTERS = SHIFT_HOURS * 4; // 32 quarter-hour ticks (every 15 min)
+const SQUARE_SIZE_PX = 16;
+const MIN_HORIZ_GAP_PX = 18; // 16px square + 2px horizontal clearance
+const LANE_STEP_PX = 18; // 16px square + 2px vertical clearance
+const BASE_BAR_HEIGHT_PX = 36; // h-9
+const BASE_BOTTOM_OFFSET_PX = 10; // centers 16px square vertically inside 36px bar
+
+function getCategoryLetter(category: FaultCategory): string {
+  switch (category) {
+    case 'mekanik':
+      return 'M';
+    case 'elektrik':
+      return 'E';
+    case 'isg':
+      return 'İ';
+    case 'planli':
+      return 'P';
+    case 'is':
+      return 'Y';
+    default:
+      return 'D';
+  }
+}
+
+function getActiveShiftConfig(hour: number): ShiftConfig {
+  if (hour >= 8 && hour < 16) {
+    return {
+      id: 'day',
+      startHour: 8,
+      endHour: 16,
+      backdropClass: 'bg-gradient-to-r from-cyan-500/20 via-sky-400/15 to-cyan-500/25',
+      progressGradient: 'linear-gradient(90deg, rgba(6,182,212,0.32), rgba(14,165,233,0.52))',
+      axisBg: 'bg-cyan-500',
+      majorTickBg: 'bg-cyan-700 dark:bg-cyan-300',
+      minorTickBg: 'bg-cyan-600/75 dark:bg-cyan-400/65',
+      hourTextClass: 'text-cyan-700 dark:text-cyan-300',
+    };
+  }
+
+  if (hour >= 16) {
+    return {
+      id: 'evening',
+      startHour: 16,
+      endHour: 24,
+      backdropClass: 'bg-gradient-to-r from-amber-500/20 via-orange-400/15 to-amber-500/25',
+      progressGradient: 'linear-gradient(90deg, rgba(245,158,11,0.32), rgba(249,115,22,0.52))',
+      axisBg: 'bg-amber-500',
+      majorTickBg: 'bg-amber-700 dark:bg-amber-300',
+      minorTickBg: 'bg-amber-600/75 dark:bg-amber-400/65',
+      hourTextClass: 'text-amber-700 dark:text-amber-300',
+    };
+  }
+
+  return {
+    id: 'night',
+    startHour: 0,
+    endHour: 8,
+    backdropClass: 'bg-gradient-to-r from-indigo-500/20 via-violet-400/15 to-indigo-500/25',
+    progressGradient: 'linear-gradient(90deg, rgba(99,102,241,0.32), rgba(139,92,246,0.52))',
+    axisBg: 'bg-indigo-500',
+    majorTickBg: 'bg-indigo-700 dark:bg-indigo-300',
+    minorTickBg: 'bg-indigo-600/75 dark:bg-indigo-400/65',
+    hourTextClass: 'text-indigo-700 dark:text-indigo-300',
+  };
+}
+
+function getShiftKey(date: Date, shiftId: ShiftConfig['id']): string {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}_${shiftId}`;
+}
+
+function parseTimeToMinutesInShift(
+  timePart: string,
+  startHour: number,
+  endHour: number
+): number | null {
+  if (!timePart) return null;
+  const parts = timePart.trim().split(':');
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+
+  const totalMin = h * 60 + m;
+  const minStart = startHour * 60;
+  const minEnd = endHour * 60;
+
+  if (totalMin < minStart || totalMin > minEnd) return null;
+  return totalMin - minStart;
+}
+
+function readShiftCache(shiftKey: string): FaultRecord[] {
+  try {
+    const raw = localStorage.getItem(SHIFT_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as StoredShiftCache;
+    if (parsed && parsed.shiftKey === shiftKey && Array.isArray(parsed.faults)) {
+      return parsed.faults;
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return [];
+}
+
+function writeShiftCache(shiftKey: string, faults: FaultRecord[]): void {
+  try {
+    const payload: StoredShiftCache = { shiftKey, faults };
+    localStorage.setItem(SHIFT_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
+  faults,
+  onSelectFault,
+}) => {
+  const [now, setNow] = useState<Date>(() => new Date());
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [trackWidthPx, setTrackWidthPx] = useState<number>(1200);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    const updateWidth = () => {
+      if (el.clientWidth > 0) {
+        setTrackWidthPx(el.clientWidth);
+      }
+    };
+
+    updateWidth();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(updateWidth);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  const currentHour = now.getHours();
+  const shift = getActiveShiftConfig(currentHour);
+  const shiftKey = getShiftKey(now, shift.id);
+
+  const [cachedShiftFaults, setCachedShiftFaults] = useState<FaultRecord[]>(() =>
+    readShiftCache(shiftKey)
+  );
+
+  // Sync live faults from this shift into persistent shift cache until shift handover (vardiya devri)
+  useEffect(() => {
+    const curNow = new Date();
+    const todayComp = {
+      d: curNow.getDate(),
+      m: curNow.getMonth() + 1,
+      y: curNow.getFullYear(),
+    };
+
+    const activeLiveFaults = faults.filter((fault) => {
+      const dateComp = parseDateComponents(fault.rawDate);
+      if (!isSameDay(todayComp, dateComp)) return false;
+      return parseTimeToMinutesInShift(fault.timePart, shift.startHour, shift.endHour) !== null;
+    });
+
+    const existingForShift = readShiftCache(shiftKey);
+    const mergedMap = new Map<string, FaultRecord>();
+
+    // Retain previously recorded faults from this shift even if closed & removed from API
+    for (const item of existingForShift) {
+      mergedMap.set(item.id, item);
+    }
+    // Update / add current live faults from this shift
+    for (const item of activeLiveFaults) {
+      mergedMap.set(item.id, item);
+    }
+
+    const mergedList = Array.from(mergedMap.values());
+    writeShiftCache(shiftKey, mergedList);
+    setCachedShiftFaults(mergedList);
+  }, [faults, shiftKey, shift.startHour, shift.endHour]);
+
+  const currentMinutesOfDay = currentHour * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const startMin = shift.startHour * 60;
+  const totalSpanMin = SHIFT_HOURS * 60;
+  const elapsedMin = Math.max(0, Math.min(totalSpanMin, currentMinutesOfDay - startMin));
+  const currentPercent = (elapsedMin / totalSpanMin) * 100;
+
+  const { faultMarkers, maxLanes } = useMemo(() => {
+    const rawItems = cachedShiftFaults
+      .map((fault) => {
+        const mins = parseTimeToMinutesInShift(fault.timePart, shift.startHour, shift.endHour);
+        if (mins === null) return null;
+        return {
+          fault,
+          mins,
+          percent: (mins / totalSpanMin) * 100,
+          timeShort: fault.timePart.substring(0, 5),
+          letter: getCategoryLetter(fault.typeInfo.category),
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => a.mins - b.mins || a.fault.timestampMs - b.fault.timestampMs);
+
+    const laneLastXPx: number[] = [];
+    const placed = rawItems.map((item) => {
+      const rawXPx = (item.percent / 100) * trackWidthPx;
+      // Keep edges inside track bounds so first/last squares aren't clipped
+      const clampedXPx = Math.max(
+        SQUARE_SIZE_PX / 2,
+        Math.min(trackWidthPx - SQUARE_SIZE_PX / 2, rawXPx)
+      );
+
+      let assignedLane = 0;
+      while (
+        assignedLane < laneLastXPx.length &&
+        clampedXPx - laneLastXPx[assignedLane] < MIN_HORIZ_GAP_PX
+      ) {
+        assignedLane++;
+      }
+      laneLastXPx[assignedLane] = clampedXPx;
+
+      const clampedPercent =
+        trackWidthPx > 0 ? (clampedXPx / trackWidthPx) * 100 : item.percent;
+
+      return {
+        ...item,
+        percent: clampedPercent,
+        lane: assignedLane,
+      };
+    });
+
+    return {
+      faultMarkers: placed,
+      maxLanes: Math.max(1, laneLastXPx.length),
+    };
+  }, [cachedShiftFaults, shift.startHour, shift.endHour, totalSpanMin, trackWidthPx]);
+
+  const trackHeightPx = Math.max(
+    BASE_BAR_HEIGHT_PX,
+    BASE_BOTTOM_OFFSET_PX + maxLanes * LANE_STEP_PX + 2
+  );
+
+  return (
+    <div className="w-full py-0 select-none">
+      {/* Horizontal Graduated Colored Ruler for Active 8-Hour Shift (Frameless, Flush Top) */}
+      <div className="relative w-full pt-4 pb-5 px-2.5">
+        <div
+          ref={trackRef}
+          className="relative w-full transition-[height] duration-150"
+          style={{ height: `${trackHeightPx}px` }}
+        >
+          {/* Base 36px Ruler Track Anchored at Bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-9">
+            {/* Colored Active Shift Backdrop */}
+            <div
+              className={`absolute inset-y-1 inset-x-0 rounded-sm ${shift.backdropClass}`}
+              aria-hidden="true"
+            />
+
+            {/* Live Elapsed Progress Bar */}
+            <div
+              className="absolute inset-y-1 left-0 rounded-l-sm transition-all duration-1000 pointer-events-none"
+              style={{
+                width: `${currentPercent}%`,
+                background: shift.progressGradient,
+              }}
+              aria-hidden="true"
+            />
+
+            {/* Center Horizontal Axis Line */}
+            <div
+              className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] ${shift.axisBg}`}
+              aria-hidden="true"
+            />
+
+            {/* Graduated Ruler Tick Marks (every 15 min across 8 hours) */}
+            {Array.from({ length: TOTAL_QUARTERS + 1 }).map((_, idx) => {
+              const pct = (idx / TOTAL_QUARTERS) * 100;
+              const isHour = idx % 4 === 0;
+              const isHalf = idx % 4 === 2;
+              const hourVal = shift.startHour + Math.floor(idx / 4);
+              const displayHour =
+                hourVal === 24 ? '00:00' : `${String(hourVal).padStart(2, '0')}:00`;
+
+              const tickHeight = isHour ? 'h-8' : isHalf ? 'h-5' : 'h-3';
+              const tickWidth = isHour ? 'w-[2px]' : 'w-[1.5px]';
+              const tickColor = isHour ? shift.majorTickBg : shift.minorTickBg;
+
+              return (
+                <div
+                  key={idx}
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col items-center"
+                  style={{ left: `${pct}%` }}
+                >
+                  <div className={`${tickWidth} ${tickHeight} ${tickColor} rounded-full`} />
+                  {isHour && (
+                    <span
+                      className={`absolute top-8 font-mono text-[10px] sm:text-[11px] font-extrabold tabular-nums whitespace-nowrap ${shift.hourTextClass}`}
+                    >
+                      {displayHour}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Current Time Indicator Needle (behind squares, badge above stack) */}
+          <div
+            className="absolute top-0 bottom-0 -translate-x-1/2 z-10 pointer-events-none flex flex-col items-center"
+            style={{ left: `${currentPercent}%` }}
+          >
+            <div className="-mt-3.5 rounded bg-rose-600 px-1.5 py-0.5 font-mono text-[9px] font-extrabold tabular-nums text-white shadow-sm whitespace-nowrap z-30">
+              {`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`}
+            </div>
+            <div className="w-[2px] flex-1 bg-rose-500/80 shadow-[0_0_6px_rgba(244,63,94,0.65)]" />
+          </div>
+
+          {/* Today's Shift Fault Markers (collision-free stacked squares) */}
+          {faultMarkers.map(({ fault, percent, timeShort, letter, lane }) => (
+            <button
+              key={fault.id}
+              type="button"
+              onClick={() => onSelectFault(fault)}
+              style={{
+                left: `${percent}%`,
+                bottom: `${BASE_BOTTOM_OFFSET_PX + lane * LANE_STEP_PX}px`,
+                backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
+                color: fault.typeInfo.fgHex,
+              }}
+              title={`${timeShort} · ${fault.machine} (${fault.typeInfo.label}) — ${fault.description}`}
+              aria-label={`${timeShort} ${fault.machine} (${fault.typeInfo.label}) arıza detayı`}
+              className="absolute -translate-x-1/2 z-20 flex h-4 w-4 items-center justify-center rounded-[2px] text-[9px] font-black leading-none shadow-xs transition-transform hover:scale-125 hover:z-30 cursor-pointer"
+            >
+              {letter}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+
+
+
