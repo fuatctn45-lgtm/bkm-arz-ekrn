@@ -306,7 +306,7 @@ export function processDashboardRows(
 
   const todayOpenFaults = allFaults
     .filter((f) => f.isTodayUnassigned)
-    .sort((a, b) => b.timestampMs - a.timestampMs);
+    .sort((a, b) => a.timestampMs - b.timestampMs);
 
   const pendingFaults = allFaults
     .filter((f) => !f.isTodayUnassigned)

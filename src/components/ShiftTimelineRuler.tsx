@@ -291,7 +291,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
   const topPadPx = Math.max(14, Math.round(clampedFontPx * 1.2 + 6));
 
   return (
-    <div className="w-full py-0 select-none">
+    <div data-ruler-root="true" className="w-full py-0 select-none">
       {/* Horizontal Graduated Colored Ruler for Active 8-Hour Shift (Frameless, Flush Top) */}
       <div
         className="relative w-full px-3.5 sm:px-4"
@@ -399,6 +399,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
             <button
               key={fault.id}
               type="button"
+              data-ruler-fault-id={fault.id}
               onClick={() => onSelectFault(fault)}
               style={{
                 left: `${percent}%`,

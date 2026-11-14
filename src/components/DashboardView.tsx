@@ -60,10 +60,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [selectedFault, setSelectedFault] = useState<FaultRecord | null>(null);
   const [isTopBarVisible, setIsTopBarVisible] = useState<boolean>(true);
+  const boardContainerRef = useRef<HTMLDivElement | null>(null);
   const topBarRef = useRef<HTMLDivElement | null>(null);
   const isTopBarHoveredRef = useRef<boolean>(false);
   const hideTimerRef = useRef<number | null>(null);
   const lastPointerPosRef = useRef<{ x: number; y: number } | null>(null);
+  const [faultConnectors, setFaultConnectors] = useState<
+    {
+      id: string;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      lane: number;
+      laneCount: number;
+      color: string;
+    }[]
+  >([]);
+  const [connectorTopSpacePx, setConnectorTopSpacePx] = useState<number>(0);
+  const [busTopY, setBusTopY] = useState<number>(0);
 
   const clearHideTimer = useCallback(() => {
     if (hideTimerRef.current !== null) {
@@ -188,16 +203,292 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const effectiveRowFont = settings.rowFontSize < BASE_FONT_PX ? BASE_FONT_PX : settings.rowFontSize;
   const rowPadY = Math.max(2, Math.round(effectiveRowFont * 0.22));
 
+  const getConnectorStrokeColor = useCallback(
+    (category: FaultCategory, bgRgb: string) => {
+      if (settings.theme === 'white') {
+        switch (category) {
+          case 'mekanik':
+            return '#0891b2';
+          case 'elektrik':
+            return '#ca8a04';
+          case 'isg':
+            return '#dc2626';
+          case 'planli':
+            return '#ea580c';
+          case 'is':
+            return '#0284c7';
+          default:
+            return '#475569';
+        }
+      }
+      return `rgba(${bgRgb}, 0.92)`;
+    },
+    [settings.theme]
+  );
+
+  const measureConnectors = useCallback(() => {
+    const container = boardContainerRef.current;
+    if (!container || todayOpenFaults.length === 0) {
+      setFaultConnectors([]);
+      setConnectorTopSpacePx(0);
+      return;
+    }
+
+    const scale = settings.pageScale > 0 ? settings.pageScale : 1;
+    const containerRect = container.getBoundingClientRect();
+    const rulerEl = container.querySelector<HTMLElement>('[data-ruler-root="true"]');
+    const rulerBottomY = rulerEl
+      ? (rulerEl.getBoundingClientRect().bottom - containerRect.top) / scale
+      : 0;
+
+    const rawItems: {
+      id: string;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      color: string;
+    }[] = [];
+
+    for (const fault of todayOpenFaults) {
+      const escapedId =
+        typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+          ? CSS.escape(fault.id)
+          : fault.id.replace(/["\\]/g, '\\$&');
+      const cardEl = container.querySelector<HTMLElement>(
+        `[data-open-fault-id="${escapedId}"]`
+      );
+      const markerEl = container.querySelector<HTMLElement>(
+        `[data-ruler-fault-id="${escapedId}"]`
+      );
+      if (!cardEl || !markerEl) continue;
+
+      const cardRect = cardEl.getBoundingClientRect();
+      const markerRect = markerEl.getBoundingClientRect();
+      if (cardRect.width === 0 || markerRect.width === 0) continue;
+
+      const x1 = (cardRect.left + cardRect.width / 2 - containerRect.left) / scale;
+      const y1 = (cardRect.top - containerRect.top) / scale - 2;
+      const x2 = (markerRect.left + markerRect.width / 2 - containerRect.left) / scale;
+      const y2 = (markerRect.bottom - containerRect.top) / scale + 1;
+
+      if (y1 <= y2 + 4) continue;
+
+      rawItems.push({
+        id: fault.id,
+        x1,
+        y1,
+        x2,
+        y2,
+        color: getConnectorStrokeColor(fault.typeInfo.category, fault.typeInfo.bgRgb),
+      });
+    }
+
+    if (rawItems.length === 0) {
+      setFaultConnectors([]);
+      setConnectorTopSpacePx(0);
+      return;
+    }
+
+    // Sort shortest horizontal spans first so inner traces stay closest to cards and outer traces arc cleanly above
+    const orderedItems = [...rawItems].sort(
+      (a, b) => Math.abs(a.x2 - a.x1) - Math.abs(b.x2 - b.x1)
+    );
+
+    // Assign non-overlapping horizontal bus lanes so parallel lines stay cleanly separated
+    const laneIntervals: Array<Array<{ minX: number; maxX: number }>> = [];
+    const assignedItems = orderedItems.map((item) => {
+      const spanMin = Math.min(item.x1, item.x2) - 10;
+      const spanMax = Math.max(item.x1, item.x2) + 10;
+      let assignedLane = 0;
+
+      while (assignedLane < laneIntervals.length) {
+        const collides = laneIntervals[assignedLane].some(
+          (seg) => !(spanMax < seg.minX || spanMin > seg.maxX)
+        );
+        if (!collides) break;
+        assignedLane++;
+      }
+
+      if (!laneIntervals[assignedLane]) {
+        laneIntervals[assignedLane] = [];
+      }
+      laneIntervals[assignedLane].push({ minX: spanMin, maxX: spanMax });
+
+      return {
+        ...item,
+        lane: assignedLane,
+      };
+    });
+
+    const laneCount = Math.max(1, laneIntervals.length);
+    const withLanes = assignedItems.map((item) => ({
+      ...item,
+      laneCount,
+    }));
+    const desiredExtraSpace = Math.min(64, laneCount * 7 + 10);
+    setBusTopY(rulerBottomY + 2);
+    setConnectorTopSpacePx(desiredExtraSpace);
+    setFaultConnectors(withLanes);
+  }, [todayOpenFaults, settings.pageScale, getConnectorStrokeColor]);
+
+  useEffect(() => {
+    let rafId = window.requestAnimationFrame(measureConnectors);
+    const container = boardContainerRef.current;
+
+    let ro: ResizeObserver | null = null;
+    if (container && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        window.cancelAnimationFrame(rafId);
+        rafId = window.requestAnimationFrame(measureConnectors);
+      });
+      ro.observe(container);
+    }
+
+    const handleResize = () => {
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(measureConnectors);
+    };
+
+    window.addEventListener('resize', handleResize);
+    const settleTimer = window.setTimeout(measureConnectors, 60);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(settleTimer);
+      ro?.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [measureConnectors, allFaults, settings.cardFontSize, settings.rulerFontSize]);
+
+  // Keep connectors smoothly synced during the 300ms top-bar expand/collapse transition
+  useEffect(() => {
+    let active = true;
+    const start = performance.now();
+    const tick = () => {
+      if (!active) return;
+      measureConnectors();
+      if (performance.now() - start < 380) {
+        window.requestAnimationFrame(tick);
+      }
+    };
+    const id = window.requestAnimationFrame(tick);
+    return () => {
+      active = false;
+      window.cancelAnimationFrame(id);
+    };
+  }, [isTopBarVisible, measureConnectors]);
+
+  const minCardTopY =
+    faultConnectors.length > 0
+      ? Math.min(...faultConnectors.map((c) => c.y1))
+      : 0;
+
   return (
     <div className="w-full overflow-x-hidden">
       <ScaledBlock scale={settings.pageScale}>
       <div
+        ref={boardContainerRef}
         className={
           isFullscreen
-            ? `w-full px-1.5 sm:px-3 ${isTopBarVisible ? 'py-1.5 sm:py-2' : 'pt-0.5 pb-1.5'} space-y-2 sm:space-y-3`
-            : `w-full px-2 sm:px-4 ${isTopBarVisible ? 'py-2 sm:py-2.5' : 'pt-0.5 pb-2'} space-y-2 sm:space-y-3`
+            ? `relative w-full px-1.5 sm:px-3 ${isTopBarVisible ? 'py-1.5 sm:py-2' : 'pt-0.5 pb-1.5'} space-y-2 sm:space-y-3`
+            : `relative w-full px-2 sm:px-4 ${isTopBarVisible ? 'py-2 sm:py-2.5' : 'pt-0.5 pb-2'} space-y-2 sm:space-y-3`
         }
       >
+      {faultConnectors.length > 0 && (
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full overflow-visible z-[5]"
+          aria-hidden="true"
+        >
+          {faultConnectors.map(({ id, x1, y1, x2, y2, lane, laneCount, color }) => {
+            const dx = x2 - x1;
+            const absDx = Math.abs(dx);
+            const laneTopBound = Math.max(y2 + 12, busTopY);
+            const laneBottomBound = Math.max(laneTopBound + 4, minCardTopY - 6);
+            // Invert lane vertically: lane 0 (shortest span) sits lowest near cards, outer spans arc higher above
+            const visualStep = laneCount - 1 - lane;
+            const rawLaneY = laneTopBound + visualStep * 7;
+            const yLane = Math.min(laneBottomBound, rawLaneY);
+
+            let linePath: string;
+            if (absDx < 4) {
+              linePath = `M ${x1.toFixed(1)} ${y1.toFixed(1)} L ${x2.toFixed(1)} ${(y2 + 1.5).toFixed(1)}`;
+            } else {
+              const dir = dx > 0 ? 1 : -1;
+              const r = Math.min(
+                10,
+                absDx / 2,
+                Math.max(2, (y1 - yLane) * 0.8),
+                Math.max(2, (yLane - y2) * 0.45)
+              );
+              linePath = [
+                `M ${x1.toFixed(1)} ${y1.toFixed(1)}`,
+                `L ${x1.toFixed(1)} ${(yLane + r).toFixed(1)}`,
+                `Q ${x1.toFixed(1)} ${yLane.toFixed(1)}, ${(x1 + dir * r).toFixed(1)} ${yLane.toFixed(1)}`,
+                `L ${(x2 - dir * r).toFixed(1)} ${yLane.toFixed(1)}`,
+                `Q ${x2.toFixed(1)} ${yLane.toFixed(1)}, ${x2.toFixed(1)} ${(yLane - r).toFixed(1)}`,
+                `L ${x2.toFixed(1)} ${(y2 + 1.5).toFixed(1)}`,
+              ].join(' ');
+            }
+
+            const roundedArrowPath = `M ${(x2 - 4).toFixed(1)} ${(y2 + 5.5).toFixed(1)} C ${(x2 - 2).toFixed(1)} ${(y2 + 2.6).toFixed(1)}, ${(x2 - 1).toFixed(1)} ${(y2 + 0.5).toFixed(1)}, ${x2.toFixed(1)} ${(y2 + 0.5).toFixed(1)} C ${(x2 + 1).toFixed(1)} ${(y2 + 0.5).toFixed(1)}, ${(x2 + 2).toFixed(1)} ${(y2 + 2.6).toFixed(1)}, ${(x2 + 4).toFixed(1)} ${(y2 + 5.5).toFixed(1)}`;
+
+            return (
+              <g key={id}>
+                {/* Subtle background halo for clean separation over ticks and hour labels */}
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke="var(--hub-bg)"
+                  strokeWidth={3.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeOpacity={0.75}
+                />
+                <path
+                  d={roundedArrowPath}
+                  fill="none"
+                  stroke="var(--hub-bg)"
+                  strokeWidth={4}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeOpacity={0.75}
+                />
+
+                {/* Smooth rounded bus line */}
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeOpacity={0.88}
+                />
+
+                {/* Rounded anchor dot on open fault card */}
+                <circle
+                  cx={x1}
+                  cy={y1}
+                  r={2.8}
+                  fill={color}
+                  fillOpacity={0.95}
+                />
+
+                {/* Rounded arrowhead pointing to bar indicator */}
+                <path
+                  d={roundedArrowPath}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={2.1}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeOpacity={0.95}
+                />
+              </g>
+            );
+          })}
+        </svg>
+      )}
       {/* Top Bar + Flush Shift Timeline Ruler */}
       <div className={isTopBarVisible ? 'space-y-1' : 'space-y-0'}>
         {/* Single Compact KPI & Status Strip (auto-hides on mouse/touch idle so page expands) */}
@@ -355,7 +646,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       )}
 
       {/* Section 1: Bugünün Açık Arızaları */}
-      <section aria-label="Bugünün Açık Arızaları">
+      <section
+        aria-label="Bugünün Açık Arızaları"
+        className="relative z-10"
+        style={
+          connectorTopSpacePx > 0
+            ? { marginTop: `${connectorTopSpacePx}px` }
+            : undefined
+        }
+      >
         {isLoading && todayOpenFaults.length === 0 ? (
           <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -401,6 +700,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <button
                   key={fault.id}
                   type="button"
+                  data-open-fault-id={fault.id}
                   onClick={() => setSelectedFault(fault)}
                   style={{
                     backgroundColor: `rgba(${fault.typeInfo.bgRgb}, ${settings.cardOpacity})`,
