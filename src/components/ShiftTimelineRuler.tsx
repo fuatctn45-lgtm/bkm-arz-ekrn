@@ -285,10 +285,12 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
   const labelBasePx = clampedFontPx < BASE_LABEL_FONT_PX ? BASE_LABEL_FONT_PX : clampedFontPx;
   const labelScale = clampedFontPx < BASE_LABEL_FONT_PX ? clampedFontPx / BASE_LABEL_FONT_PX : 1;
   const halfLabelScale = labelScale * 0.85;
-  const pillScale = labelScale * 0.85;
+
+  const pillFontPx = Math.min(28, Math.max(13, Math.round(clampedFontPx * 1.5)));
+  const pillPullUpPx = Math.ceil(pillFontPx * 1.15 + 6);
 
   const bottomPadPx = Math.max(12, Math.round(clampedFontPx * 1.45 + 6));
-  const topPadPx = Math.max(14, Math.round(clampedFontPx * 1.2 + 6));
+  const topPadPx = pillPullUpPx + 5;
 
   return (
     <div data-ruler-root="true" className="w-full py-0 select-none">
@@ -382,11 +384,10 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
             style={{ left: `${currentPercent}%` }}
           >
             <div
-              className="-mt-3.5 rounded bg-rose-600 px-1.5 py-0.5 font-mono font-extrabold tabular-nums text-white shadow-sm whitespace-nowrap leading-none z-30"
+              className="rounded-md bg-rose-600 px-2 py-0.5 font-mono font-black tracking-wide tabular-nums text-white shadow-md whitespace-nowrap leading-none z-30"
               style={{
-                fontSize: `${labelBasePx}px`,
-                transform: `scale(${pillScale})`,
-                transformOrigin: 'bottom center',
+                marginTop: `-${pillPullUpPx}px`,
+                fontSize: `${pillFontPx}px`,
               }}
             >
               {`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`}
