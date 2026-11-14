@@ -73,86 +73,100 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const renderCategoryIcon = (category: FaultCategory) => {
     switch (category) {
       case 'mekanik':
-        return <Wrench className="w-4 h-4 shrink-0" aria-hidden="true" />;
+        return <Wrench className="w-[1.15em] h-[1.15em] shrink-0" aria-hidden="true" />;
       case 'elektrik':
-        return <Bolt className="w-4 h-4 shrink-0" aria-hidden="true" />;
+        return <Bolt className="w-[1.15em] h-[1.15em] shrink-0" aria-hidden="true" />;
       case 'isg':
-        return <ShieldAlert className="w-4 h-4 shrink-0" aria-hidden="true" />;
+        return <ShieldAlert className="w-[1.15em] h-[1.15em] shrink-0" aria-hidden="true" />;
       case 'planli':
-        return <CalendarClock className="w-4 h-4 shrink-0" aria-hidden="true" />;
+        return <CalendarClock className="w-[1.15em] h-[1.15em] shrink-0" aria-hidden="true" />;
       default:
-        return <Settings className="w-4 h-4 shrink-0" aria-hidden="true" />;
+        return <Settings className="w-[1.15em] h-[1.15em] shrink-0" aria-hidden="true" />;
     }
   };
 
+  const cardPadPx = Math.max(4, Math.round(settings.cardFontSize * 0.72));
+  const cardGapPx = Math.max(2, Math.round(settings.cardFontSize * 0.35));
+  const rowPadY = Math.max(1, Math.round(settings.rowFontSize * 0.16));
+
+  const scaleStyle: React.CSSProperties | undefined =
+    settings.pageScale !== 1
+      ? {
+          transform: `scale(${settings.pageScale})`,
+          transformOrigin: 'top left',
+          width: `${100 / settings.pageScale}%`,
+        }
+      : undefined;
+
   return (
-    <div
-      className={
-        isFullscreen
-          ? 'w-full px-2 sm:px-3 py-3 space-y-4'
-          : 'w-full px-3 sm:px-5 py-3 space-y-5'
-      }
-      style={settings.pageScale !== 1 ? { zoom: settings.pageScale } : undefined}
-    >
+    <div className="w-full overflow-x-hidden">
+      <div
+        className={
+          isFullscreen
+            ? 'w-full px-1.5 sm:px-3 py-2 sm:py-3 space-y-3 sm:space-y-4'
+            : 'w-full px-2 sm:px-5 py-2 sm:py-3 space-y-3 sm:space-y-5'
+        }
+        style={scaleStyle}
+      >
       {/* Top Bar + Flush Shift Timeline Ruler */}
       <div className="space-y-1">
         {/* Single Compact KPI & Status Strip */}
         <section
           aria-label="Anlık arıza özeti"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-4 py-2"
+          className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-2.5 sm:px-4 py-1.5 sm:py-2"
         >
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase text-[var(--hub-text-muted)]">Toplam</span>
-              <span className="font-mono text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-5">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-[10px] sm:text-xs font-bold uppercase text-[var(--hub-text-muted)]">Toplam</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
                 {stats.total}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400">
-              <Wrench className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="text-xs font-bold uppercase">Mek</span>
-              <span className="font-mono text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+            <div className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
+              <Wrench className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">Mek</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
                 {stats.mekanik}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
-              <Bolt className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="text-xs font-bold uppercase">Elek</span>
-              <span className="font-mono text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+            <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+              <Bolt className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">Elek</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
                 {stats.elektrik}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
-              <ShieldAlert className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="text-xs font-bold uppercase">İSG</span>
-              <span className="font-mono text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+            <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+              <ShieldAlert className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">İSG</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
                 {stats.isg}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-[var(--hub-text-muted)]">
-              <History className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="text-xs font-bold uppercase">Tekrar</span>
-              <span className="font-mono text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+            <div className="flex items-center gap-1 text-[var(--hub-text-muted)]">
+              <History className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">Tekrar</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
                 {stats.recurring}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
-              <CalendarClock className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="text-xs font-bold uppercase">P.Bakım</span>
-              <span className="font-mono text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+            <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
+              <CalendarClock className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">P.Bakım</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
                 {stats.planli}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
             <PWAInstallButton />
-            <span className="font-mono text-xs font-semibold tabular-nums text-[var(--hub-text-muted)] pr-1">
+            <span className="font-mono text-[10px] sm:text-xs font-semibold tabular-nums text-[var(--hub-text-muted)] pr-0.5 sm:pr-1">
               {lastSyncText} · {refreshCountdown}s
             </span>
 
@@ -160,12 +174,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="button"
               onClick={onRefresh}
               disabled={isLoading}
-              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-2 text-[var(--hub-text)] hover:opacity-90 disabled:opacity-60 cursor-pointer"
+              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-1.5 sm:p-2 text-[var(--hub-text)] hover:opacity-90 disabled:opacity-60 cursor-pointer"
               title="Şimdi Yenile"
               aria-label="Şimdi Yenile"
             >
               <RefreshCw
-                className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`}
+                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? 'animate-spin' : ''}`}
                 aria-hidden="true"
               />
             </button>
@@ -173,24 +187,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-2 text-[var(--hub-text)] hover:opacity-90 cursor-pointer"
+              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-1.5 sm:p-2 text-[var(--hub-text)] hover:opacity-90 cursor-pointer"
               title="Görünüm ve Tema Ayarları"
               aria-label="Görünüm ve Tema Ayarları"
             >
-              <Sliders className="w-4 h-4" aria-hidden="true" />
+              <Sliders className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
             </button>
 
             <button
               type="button"
               onClick={onToggleFullscreen}
-              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-2 text-[var(--hub-text)] hover:opacity-90 cursor-pointer"
+              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-1.5 sm:p-2 text-[var(--hub-text)] hover:opacity-90 cursor-pointer"
               title={isFullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
               aria-label={isFullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
             >
               {isFullscreen ? (
-                <Minimize2 className="w-4 h-4" aria-hidden="true" />
+                <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
               ) : (
-                <Maximize2 className="w-4 h-4" aria-hidden="true" />
+                <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
               )}
             </button>
           </div>
@@ -206,7 +220,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {error && (
         <div
           role="alert"
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-300"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-500/50 bg-red-500/10 p-3 sm:p-4 text-xs sm:text-sm text-red-600 dark:text-red-300"
         >
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
@@ -228,27 +242,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Section 1: Bugünün Açık Arızaları */}
       <section aria-label="Bugünün Açık Arızaları">
         {isLoading && todayOpenFaults.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="h-36 animate-pulse rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] p-4"
+                className="h-28 sm:h-36 animate-pulse rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] p-4"
               />
             ))}
           </div>
         ) : todayOpenFaults.length === 0 ? (
-          <div className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-6 py-8 text-center">
-            <p className="text-sm font-semibold text-[var(--hub-text)]">
+          <div className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-4 py-6 text-center">
+            <p className="text-xs sm:text-sm font-semibold text-[var(--hub-text)]">
               Bugün bekleyen açık arıza kaydı bulunmuyor.
             </p>
-            <p className="mt-1 text-xs text-[var(--hub-text-muted)]">
+            <p className="mt-1 text-[11px] sm:text-xs text-[var(--hub-text-muted)]">
               Yeni bir arıza bildirildiğinde pano otomatik olarak güncellenecektir.
             </p>
           </div>
         ) : (
           <div
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3"
-            style={{ fontSize: `${settings.cardFontSize}px` }}
+            className={
+              settings.cardFontSize <= 10
+                ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 sm:gap-2.5'
+                : 'grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3'
+            }
+            style={{
+              fontSize: `${settings.cardFontSize}px`,
+              lineHeight: 1.2,
+              WebkitTextSizeAdjust: '100%',
+              textSizeAdjust: '100%',
+            }}
           >
             {todayOpenFaults.map((fault) => {
               const timeShort = fault.timePart ? fault.timePart.substring(0, 5) : '--:--';
@@ -271,19 +294,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     backgroundColor: `rgba(${fault.typeInfo.bgRgb}, ${settings.cardOpacity})`,
                     color: fgColor,
                     borderColor: pillBorder,
+                    fontSize: `${settings.cardFontSize}px`,
+                    lineHeight: 1.2,
+                    padding: `${cardPadPx}px`,
+                    gap: `${cardGapPx}px`,
+                    maxHeight: '999999px',
+                    WebkitTextSizeAdjust: '100%',
+                    textSizeAdjust: '100%',
                   }}
-                  className="group text-left rounded-xl border p-4 shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:brightness-95 cursor-pointer flex flex-col gap-2"
+                  className="group text-left rounded-lg sm:rounded-xl border shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:brightness-95 cursor-pointer flex flex-col min-w-0"
                 >
-                  <div className="flex items-center justify-between gap-2 w-full">
+                  <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
                     <span
-                      className="inline-flex items-center gap-1.5 font-extrabold uppercase tracking-wide"
-                      style={{ fontSize: '0.8em', color: fgColor }}
+                      className="inline-flex items-center gap-1 font-extrabold uppercase tracking-wide min-w-0"
+                      style={{ fontSize: '0.82em', color: fgColor }}
                     >
                       {renderCategoryIcon(fault.typeInfo.category)}
                       <span className="truncate">{fault.typeInfo.label}</span>
                     </span>
                     <span
-                      className="font-mono font-extrabold tabular-nums px-2 py-0.5 rounded border"
+                      className="font-mono font-extrabold tabular-nums px-1.5 py-[1px] rounded border shrink-0"
                       style={{
                         fontSize: '0.78em',
                         color: fgColor,
@@ -298,21 +328,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                   </div>
 
-                  <div className="font-extrabold truncate" style={{ fontSize: '1.05em', color: fgColor }}>
+                  <div
+                    className="font-extrabold truncate w-full"
+                    style={{ fontSize: '1.05em', color: fgColor }}
+                  >
                     {fault.machine}
                   </div>
 
                   <div
-                    className="flex items-center justify-between gap-2"
+                    className="flex items-center justify-between gap-1.5 w-full min-w-0"
                     style={{ fontSize: '0.78em', color: mutedColor }}
                   >
                     <span className="font-bold truncate">Bildiren: {fault.reporter}</span>
-                    {fault.shift && <span className="font-bold shrink-0">{fault.shift}</span>}
+                    {fault.shift && <span className="font-bold shrink-0 truncate max-w-[45%]">{fault.shift}</span>}
                   </div>
 
                   <p
-                    className="mt-1 font-extrabold leading-snug underline underline-offset-2 line-clamp-2"
-                    style={{ fontSize: '0.95em', color: fgColor }}
+                    className="font-extrabold leading-snug underline underline-offset-2 line-clamp-2 w-full"
+                    style={{
+                      fontSize: '0.95em',
+                      color: fgColor,
+                      maxHeight: '999999px',
+                    }}
                   >
                     {fault.description}
                   </p>
@@ -324,15 +361,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </section>
 
       {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar */}
-      <section aria-labelledby="pending-faults-heading" className="space-y-3">
-        <div className="flex items-center justify-between border-b border-[var(--hub-border)] pb-2">
+      <section aria-labelledby="pending-faults-heading" className="space-y-2 sm:space-y-3">
+        <div className="flex items-center justify-between border-b border-[var(--hub-border)] pb-1.5 sm:pb-2">
           <h2
             id="pending-faults-heading"
-            className="text-base font-extrabold tracking-tight text-[var(--hub-text)]"
+            className="text-xs sm:text-base font-extrabold tracking-tight text-[var(--hub-text)]"
           >
             Bekleyen ve Geçmiş Kayıtlar
           </h2>
-          <span className="font-mono text-xs font-bold tabular-nums text-[var(--hub-text-muted)]">
+          <span className="font-mono text-[11px] sm:text-xs font-bold tabular-nums text-[var(--hub-text-muted)]">
             {pendingFaults.length} kayıt
           </span>
         </div>
@@ -348,12 +385,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         ) : groupedPending.length === 0 ? (
           <div className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-6 py-8 text-center">
-            <p className="text-sm font-semibold text-[var(--hub-text)]">
+            <p className="text-xs sm:text-sm font-semibold text-[var(--hub-text)]">
               Filtreye uygun geçmiş veya bekleyen kayıt bulunamadı.
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             {groupedPending.map((group) => {
               const isCollapsed = !!collapsedGroups[group.category];
               const sampleInfo = group.items[0].typeInfo;
@@ -372,7 +409,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       backgroundColor: `rgba(${sampleInfo.bgRgb}, ${settings.cardOpacity})`,
                       color: headerFg,
                     }}
-                    className="flex w-full items-center justify-between gap-4 px-3 py-1 text-left transition-all hover:brightness-95 cursor-pointer"
+                    className="flex w-full items-center justify-between gap-3 px-2.5 sm:px-3 py-1 text-left transition-all hover:brightness-95 cursor-pointer"
                   >
                     <div className="flex items-center gap-1.5">
                       {isCollapsed ? (
@@ -380,11 +417,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ) : (
                         <ChevronDown className="w-3.5 h-3.5" />
                       )}
-                      <span className="text-xs font-extrabold uppercase tracking-wide">
+                      <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wide">
                         {group.title}
                       </span>
                     </div>
-                    <span className="font-mono text-xs font-extrabold tabular-nums">
+                    <span className="font-mono text-[11px] sm:text-xs font-extrabold tabular-nums">
                       {group.items.length}
                     </span>
                   </button>
@@ -392,25 +429,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {!isCollapsed && (
                     <div className="w-full overflow-x-auto">
                       <table
-                        className="w-full min-w-full border-collapse text-left leading-tight"
-                        style={{ fontSize: `${settings.rowFontSize}px`, lineHeight: 1.25 }}
+                        className="w-full border-collapse text-left"
+                        style={{
+                          fontSize: `${settings.rowFontSize}px`,
+                          lineHeight: 1.2,
+                          WebkitTextSizeAdjust: '100%',
+                          textSizeAdjust: '100%',
+                          maxHeight: '999999px',
+                        }}
                       >
-                        <thead>
-                          <tr className="border-b border-[var(--hub-border)] bg-[var(--hub-surface-alt)] text-[10px] font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
-                            <th className="px-2.5 py-1 whitespace-nowrap">Tarih / Saat</th>
-                            <th className="px-2.5 py-1 whitespace-nowrap">Bildiren</th>
-                            <th className="px-2.5 py-1 whitespace-nowrap">Makine / Bölüm</th>
-                            <th className="px-2.5 py-1 whitespace-nowrap">Arıza Tipi</th>
-                            <th className="px-2.5 py-1 w-full">Arıza Açıklaması</th>
-                            <th className="px-2.5 py-1 text-right whitespace-nowrap">Görevli</th>
+                        <thead style={{ fontSize: '0.85em' }}>
+                          <tr className="border-b border-[var(--hub-border)] bg-[var(--hub-surface-alt)] font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
+                            <th className="px-1.5 sm:px-2.5 py-1 whitespace-nowrap">Tarih</th>
+                            <th className="px-1.5 sm:px-2.5 py-1 whitespace-nowrap">Bildiren</th>
+                            <th className="px-1.5 sm:px-2.5 py-1 whitespace-nowrap">Makine</th>
+                            <th className="hidden md:table-cell px-2.5 py-1 whitespace-nowrap">Arıza Tipi</th>
+                            <th className="px-1.5 sm:px-2.5 py-1 w-full">Arıza Açıklaması</th>
+                            <th className="px-1.5 sm:px-2.5 py-1 text-right whitespace-nowrap">Görevli</th>
                           </tr>
                         </thead>
-                        <tbody>
+                        <tbody style={{ fontSize: '1em' }}>
                           {group.items.map((item) => {
                             const rowFg = lowOpacityDark ? '#f8fafc' : item.typeInfo.fgHex;
                             const rowMuted = lowOpacityDark
                               ? 'rgba(248, 250, 252, 0.85)'
                               : item.typeInfo.mutedFgHex;
+                            const cellStyle: React.CSSProperties = {
+                              fontSize: `${settings.rowFontSize}px`,
+                              lineHeight: 1.2,
+                              paddingTop: `${rowPadY}px`,
+                              paddingBottom: `${rowPadY}px`,
+                              maxHeight: '999999px',
+                              WebkitTextSizeAdjust: '100%',
+                              textSizeAdjust: '100%',
+                            };
+
                             return (
                               <tr
                                 key={item.id}
@@ -423,29 +476,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 className="transition-all hover:brightness-95 cursor-pointer"
                               >
                                 <td
-                                  className="px-2.5 py-[2px] font-mono font-bold tabular-nums whitespace-nowrap"
-                                  style={{ color: rowMuted }}
+                                  className="px-1.5 sm:px-2.5 font-mono font-bold tabular-nums whitespace-nowrap"
+                                  style={{ ...cellStyle, color: rowMuted }}
                                 >
-                                  {item.datePart} {item.timePart}
+                                  <span className="sm:hidden">
+                                    {item.datePart.slice(0, 5)} {item.timePart.slice(0, 5)}
+                                  </span>
+                                  <span className="hidden sm:inline">
+                                    {item.datePart} {item.timePart}
+                                  </span>
                                 </td>
-                                <td className="px-2.5 py-[2px] font-bold whitespace-nowrap">
+                                <td
+                                  className="px-1.5 sm:px-2.5 font-bold whitespace-nowrap"
+                                  style={cellStyle}
+                                >
                                   {item.reporter}
                                 </td>
-                                <td className="px-2.5 py-[2px] font-extrabold whitespace-nowrap">
+                                <td
+                                  className="px-1.5 sm:px-2.5 font-extrabold whitespace-nowrap"
+                                  style={cellStyle}
+                                >
                                   {item.machine}
                                   {item.isRecurring && (
-                                    <span className="ml-1.5 font-mono text-[0.85em] font-extrabold opacity-80">
+                                    <span className="ml-1 font-mono text-[0.85em] font-extrabold opacity-80">
                                       ({item.machineFaultCount}x)
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-2.5 py-[2px] font-extrabold whitespace-nowrap">
+                                <td
+                                  className="hidden md:table-cell px-2.5 font-extrabold whitespace-nowrap"
+                                  style={cellStyle}
+                                >
                                   {item.typeInfo.label}
                                 </td>
-                                <td className="px-2.5 py-[2px] w-full font-extrabold underline underline-offset-2">
+                                <td
+                                  className="px-1.5 sm:px-2.5 w-full font-extrabold underline underline-offset-2"
+                                  style={cellStyle}
+                                >
                                   {item.description}
                                 </td>
-                                <td className="px-2.5 py-[2px] text-right font-extrabold whitespace-nowrap">
+                                <td
+                                  className="px-1.5 sm:px-2.5 text-right font-extrabold whitespace-nowrap"
+                                  style={cellStyle}
+                                >
                                   {item.technician}
                                 </td>
                               </tr>
@@ -461,6 +534,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         )}
       </section>
+      </div>
 
       {/* Fault Detail Modal */}
       {selectedFault && (

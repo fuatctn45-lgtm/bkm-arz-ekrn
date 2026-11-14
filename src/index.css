@@ -50,12 +50,23 @@
   --hub-text-muted: #475569;
 }
 
+html,
 body {
   background-color: var(--hub-bg);
   color: var(--hub-text);
   font-family: var(--hub-font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
+  max-width: 100%;
+  touch-action: manipulation;
+}
+
+* {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body[data-thickness="thin"] *:not(.font-mono) {

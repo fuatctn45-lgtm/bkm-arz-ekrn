@@ -281,7 +281,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
   return (
     <div className="w-full py-0 select-none">
       {/* Horizontal Graduated Colored Ruler for Active 8-Hour Shift (Frameless, Flush Top) */}
-      <div className="relative w-full pt-4 pb-5 px-2.5">
+      <div className="relative w-full pt-4 pb-5 px-3 sm:px-2.5">
         <div
           ref={trackRef}
           className="relative w-full transition-[height] duration-150"
@@ -333,7 +333,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
                   <div className={`${tickWidth} ${tickHeight} ${tickColor} rounded-full`} />
                   {isHour && (
                     <span
-                      className={`absolute top-8 font-mono text-[10px] sm:text-[11px] font-extrabold tabular-nums whitespace-nowrap ${shift.hourTextClass}`}
+                      className={`absolute top-8 font-mono text-[8px] min-[420px]:text-[9px] sm:text-[11px] font-extrabold tabular-nums whitespace-nowrap ${shift.hourTextClass}`}
                     >
                       {displayHour}
                     </span>

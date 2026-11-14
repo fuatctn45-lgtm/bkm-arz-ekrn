@@ -32,8 +32,8 @@ function readStoredSettings(): DisplaySettings {
     return {
       ...DEFAULT_DISPLAY_SETTINGS,
       theme: ['dark', 'blue', 'gray', 'white'].includes(legacyTheme) ? legacyTheme : 'dark',
-      cardFontSize: Number.isFinite(legacyCardFs) ? legacyCardFs : 14,
-      rowFontSize: Number.isFinite(legacyRowFs) ? legacyRowFs : 12,
+      cardFontSize: Number.isFinite(legacyCardFs) ? Math.max(4, legacyCardFs) : 14,
+      rowFontSize: Number.isFinite(legacyRowFs) ? Math.max(4, legacyRowFs) : 12,
       cardOpacity: Number.isFinite(legacyOpacity) ? legacyOpacity : 1,
       pageScale: Number.isFinite(legacyScale) ? legacyScale : 1,
     };
@@ -97,14 +97,17 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [previewSettings, setPreviewSettings] = useState<DisplaySettings | null>(null);
   const [alertFault, setAlertFault] = useState<FaultRecord | null>(null);
 
+  const activeSettings = previewSettings ?? settings;
+
   const settingsRef = useRef(settings);
-  settingsRef.current = settings;
+  settingsRef.current = activeSettings;
 
   useEffect(() => {
-    applyThemeToDocument(settings.theme, settings);
-  }, [settings]);
+    applyThemeToDocument(activeSettings.theme, activeSettings);
+  }, [activeSettings]);
 
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -200,14 +203,20 @@ export default function App() {
 
   const handleSaveSettings = (nextSettings: DisplaySettings, nextApiConfig: ApiConfig) => {
     setSettings(nextSettings);
+    setPreviewSettings(null);
     setApiConfig(nextApiConfig);
     localStorage.setItem('hub-display-settings', JSON.stringify(nextSettings));
     localStorage.setItem('hub-api-config', JSON.stringify(nextApiConfig));
     setIsSettingsOpen(false);
   };
 
-  const handlePreviewTheme = (theme: ThemePreset) => {
-    applyThemeToDocument(theme, settings);
+  const handleCloseSettings = () => {
+    setPreviewSettings(null);
+    setIsSettingsOpen(false);
+  };
+
+  const handlePreviewSettings = (nextSettings: DisplaySettings) => {
+    setPreviewSettings(nextSettings);
   };
 
   return (
@@ -223,7 +232,7 @@ export default function App() {
           lastSyncText={lastSyncText}
           refreshCountdown={refreshCountdown}
           isFullscreen={isFullscreen}
-          settings={settings}
+          settings={activeSettings}
           onRefresh={fetchDashboardData}
           onToggleFullscreen={handleToggleFullscreen}
           onOpenSettings={() => setIsSettingsOpen(true)}
@@ -234,9 +243,9 @@ export default function App() {
         isOpen={isSettingsOpen}
         settings={settings}
         apiConfig={apiConfig}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={handleCloseSettings}
         onSave={handleSaveSettings}
-        onPreviewTheme={handlePreviewTheme}
+        onPreviewSettings={handlePreviewSettings}
       />
 
       <NewFaultAlertModal
