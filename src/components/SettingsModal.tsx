@@ -5,9 +5,10 @@ import type {
   DisplaySettings,
   FontFamilyPreset,
   FontWeightPreset,
-  ThemePreset,
 } from '../types';
 import {
+  BASE_THEME_DEFINITIONS,
+  COLOR_PALETTE_DEFINITIONS,
   DEFAULT_DASHBOARD_API_URL,
   DEFAULT_DISPLAY_SETTINGS,
 } from '../utils/faultHelpers';
@@ -20,13 +21,6 @@ interface SettingsModalProps {
   onSave: (nextSettings: DisplaySettings, nextApiConfig: ApiConfig) => void;
   onPreviewSettings: (nextSettings: DisplaySettings) => void;
 }
-
-const THEME_OPTIONS: { id: ThemePreset; label: string; swatch: string }[] = [
-  { id: 'dark', label: 'Koyu Tema', swatch: '#020617' },
-  { id: 'blue', label: 'Lacivert Tema', swatch: '#082f49' },
-  { id: 'gray', label: 'Gri Tema', swatch: '#1e293b' },
-  { id: 'white', label: 'Beyaz Tema', swatch: '#f1f5f9' },
-];
 
 const MIN_FONT_SIZE = 4;
 const MAX_FONT_SIZE = 24;
@@ -175,7 +169,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div>
             <div className="text-xs font-bold text-[var(--hub-text)] mb-2">Arka Plan Teması</div>
             <div className="grid grid-cols-2 gap-2">
-              {THEME_OPTIONS.map((t) => {
+              {BASE_THEME_DEFINITIONS.map((t) => {
                 const active = draft.theme === t.id;
                 return (
                   <button
@@ -193,6 +187,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       style={{ backgroundColor: t.swatch }}
                     />
                     <span className="truncate">{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-2.5 text-[11px] font-bold text-[var(--hub-text-muted)] mb-1.5">
+              Özel Arka Plan Renkleri
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {COLOR_PALETTE_DEFINITIONS.map((c) => {
+                const active = draft.theme === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => updateDraft((prev) => ({ ...prev, theme: c.id }))}
+                    title={c.label}
+                    aria-label={`Arka plan rengi ${c.label}`}
+                    style={{
+                      backgroundColor: c.swatch,
+                      color: c.text,
+                    }}
+                    className={`flex h-9 flex-col items-center justify-center rounded-lg border text-[9px] font-mono font-extrabold tracking-tight transition-transform active:scale-95 cursor-pointer ${
+                      active
+                        ? 'ring-2 ring-cyan-500 ring-offset-1 ring-offset-[var(--hub-surface)] border-cyan-500 scale-[1.03]'
+                        : 'border-slate-400/50 hover:scale-[1.03]'
+                    }`}
+                  >
+                    <span>{c.label}</span>
                   </button>
                 );
               })}

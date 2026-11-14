@@ -4,7 +4,270 @@ import type {
   FaultCategory,
   FaultRecord,
   FaultTypeInfo,
+  ThemePreset,
 } from '../types';
+
+export interface ThemeDefinition {
+  id: ThemePreset;
+  label: string;
+  swatch: string;
+  bg: string;
+  surface: string;
+  surfaceAlt: string;
+  border: string;
+  text: string;
+  textMuted: string;
+  isLight: boolean;
+}
+
+export const BASE_THEME_DEFINITIONS: ThemeDefinition[] = [
+  {
+    id: 'dark',
+    label: 'Koyu Tema',
+    swatch: '#020617',
+    bg: '#020617',
+    surface: '#0f172a',
+    surfaceAlt: '#1e293b',
+    border: '#1e293b',
+    text: '#f8fafc',
+    textMuted: '#94a3b8',
+    isLight: false,
+  },
+  {
+    id: 'blue',
+    label: 'Lacivert Tema',
+    swatch: '#082f49',
+    bg: '#082f49',
+    surface: '#0c4a6e',
+    surfaceAlt: '#075985',
+    border: '#0369a1',
+    text: '#f0f9ff',
+    textMuted: '#bae6fd',
+    isLight: false,
+  },
+  {
+    id: 'gray',
+    label: 'Gri Tema',
+    swatch: '#1e293b',
+    bg: '#1e293b',
+    surface: '#334155',
+    surfaceAlt: '#475569',
+    border: '#475569',
+    text: '#f8fafc',
+    textMuted: '#cbd5e1',
+    isLight: false,
+  },
+  {
+    id: 'white',
+    label: 'Beyaz Tema',
+    swatch: '#f1f5f9',
+    bg: '#f1f5f9',
+    surface: '#ffffff',
+    surfaceAlt: '#e2e8f0',
+    border: '#cbd5e1',
+    text: '#0f172a',
+    textMuted: '#475569',
+    isLight: true,
+  },
+];
+
+export const COLOR_PALETTE_DEFINITIONS: ThemeDefinition[] = [
+  {
+    id: '#000000',
+    label: '#000000',
+    swatch: '#000000',
+    bg: '#000000',
+    surface: '#111827',
+    surfaceAlt: '#1f2937',
+    border: '#27272a',
+    text: '#ffffff',
+    textMuted: '#a1a1aa',
+    isLight: false,
+  },
+  {
+    id: '#FFFFFF',
+    label: '#FFFFFF',
+    swatch: '#FFFFFF',
+    bg: '#FFFFFF',
+    surface: '#f8fafc',
+    surfaceAlt: '#f1f5f9',
+    border: '#cbd5e1',
+    text: '#0f172a',
+    textMuted: '#475569',
+    isLight: true,
+  },
+  {
+    id: '#FF0000',
+    label: '#FF0000',
+    swatch: '#FF0000',
+    bg: '#FF0000',
+    surface: '#991b1b',
+    surfaceAlt: '#b91c1c',
+    border: '#ef4444',
+    text: '#ffffff',
+    textMuted: '#fecaca',
+    isLight: false,
+  },
+  {
+    id: '#0000FF',
+    label: '#0000FF',
+    swatch: '#0000FF',
+    bg: '#0000FF',
+    surface: '#1e3a8a',
+    surfaceAlt: '#1d4ed8',
+    border: '#3b82f6',
+    text: '#ffffff',
+    textMuted: '#bfdbfe',
+    isLight: false,
+  },
+  {
+    id: '#808080',
+    label: '#808080',
+    swatch: '#808080',
+    bg: '#808080',
+    surface: '#f3f4f6',
+    surfaceAlt: '#e5e7eb',
+    border: '#52525b',
+    text: '#0f172a',
+    textMuted: '#374151',
+    isLight: true,
+  },
+  {
+    id: '#333333',
+    label: '#333333',
+    swatch: '#333333',
+    bg: '#333333',
+    surface: '#1f1f1f',
+    surfaceAlt: '#2a2a2a',
+    border: '#4a4a4a',
+    text: '#f8fafc',
+    textMuted: '#d4d4d8',
+    isLight: false,
+  },
+  {
+    id: '#00FF00',
+    label: '#00FF00',
+    swatch: '#00FF00',
+    bg: '#00FF00',
+    surface: '#f0fdf4',
+    surfaceAlt: '#dcfce7',
+    border: '#16a34a',
+    text: '#052e16',
+    textMuted: '#166534',
+    isLight: true,
+  },
+  {
+    id: '#FFA500',
+    label: '#FFA500',
+    swatch: '#FFA500',
+    bg: '#FFA500',
+    surface: '#fffbeb',
+    surfaceAlt: '#fef3c7',
+    border: '#d97706',
+    text: '#1c1917',
+    textMuted: '#78350f',
+    isLight: true,
+  },
+  {
+    id: '#FF00FF',
+    label: '#FF00FF',
+    swatch: '#FF00FF',
+    bg: '#FF00FF',
+    surface: '#fdf4ff',
+    surfaceAlt: '#fae8ff',
+    border: '#a21caf',
+    text: '#0f172a',
+    textMuted: '#701a75',
+    isLight: true,
+  },
+  {
+    id: '#FFFF00',
+    label: '#FFFF00',
+    swatch: '#FFFF00',
+    bg: '#FFFF00',
+    surface: '#fefce8',
+    surfaceAlt: '#fef9c3',
+    border: '#ca8a04',
+    text: '#0f172a',
+    textMuted: '#713f12',
+    isLight: true,
+  },
+  {
+    id: '#FFD700',
+    label: '#FFD700',
+    swatch: '#FFD700',
+    bg: '#FFD700',
+    surface: '#fffbeb',
+    surfaceAlt: '#fef3c7',
+    border: '#b45309',
+    text: '#0f172a',
+    textMuted: '#78350f',
+    isLight: true,
+  },
+  {
+    id: '#F5F5F5',
+    label: '#F5F5F5',
+    swatch: '#F5F5F5',
+    bg: '#F5F5F5',
+    surface: '#ffffff',
+    surfaceAlt: '#e5e5e5',
+    border: '#d4d4d4',
+    text: '#0f172a',
+    textMuted: '#525252',
+    isLight: true,
+  },
+  {
+    id: '#1F91DC',
+    label: '#1F91DC',
+    swatch: '#1F91DC',
+    bg: '#1F91DC',
+    surface: '#0c4a6e',
+    surfaceAlt: '#0369a1',
+    border: '#38bdf8',
+    text: '#ffffff',
+    textMuted: '#e0f2fe',
+    isLight: false,
+  },
+  {
+    id: '#D6C1A6',
+    label: '#D6C1A6',
+    swatch: '#D6C1A6',
+    bg: '#D6C1A6',
+    surface: '#faf6f0',
+    surfaceAlt: '#efe7da',
+    border: '#a89173',
+    text: '#1c1917',
+    textMuted: '#57534e',
+    isLight: true,
+  },
+  {
+    id: '#ED9277',
+    label: '#ED9277',
+    swatch: '#ED9277',
+    bg: '#ED9277',
+    surface: '#fff5f2',
+    surfaceAlt: '#ffe4dc',
+    border: '#c2593f',
+    text: '#1c1917',
+    textMuted: '#7c2d12',
+    isLight: true,
+  },
+];
+
+export const ALL_THEME_DEFINITIONS: ThemeDefinition[] = [
+  ...BASE_THEME_DEFINITIONS,
+  ...COLOR_PALETTE_DEFINITIONS,
+];
+
+export function getThemeDefinition(theme: string | undefined): ThemeDefinition {
+  return (
+    ALL_THEME_DEFINITIONS.find((t) => t.id === theme) ?? BASE_THEME_DEFINITIONS[0]
+  );
+}
+
+export function isLightTheme(theme: string | undefined): boolean {
+  return getThemeDefinition(theme).isLight;
+}
 
 export const DEFAULT_DASHBOARD_API_URL =
   'https://script.google.com/macros/s/AKfycbwQS11Ce9KO5zpfsUVRpK8DjZrHCGz-T-6dVQC7awZ0llyas_CVii2UXV3Rg0ivDKllmA/exec';

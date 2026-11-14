@@ -11,8 +11,10 @@ import type {
   ThemePreset,
 } from './types';
 import {
+  ALL_THEME_DEFINITIONS,
   DEFAULT_DASHBOARD_API_URL,
   DEFAULT_DISPLAY_SETTINGS,
+  getThemeDefinition,
   playAlertChime,
   processDashboardRows,
   REFRESH_INTERVAL_SEC,
@@ -36,9 +38,10 @@ function readStoredSettings(): DisplaySettings {
     const legacyRowFs = parseFloat(localStorage.getItem('hub-row-fs') || '12');
     const legacyOpacity = parseFloat(localStorage.getItem('hub-card-opacity') || '1');
     const legacyScale = parseFloat(localStorage.getItem('hub-scale') || '1');
+    const validThemeIds = new Set<string>(ALL_THEME_DEFINITIONS.map((t) => t.id));
     return {
       ...DEFAULT_DISPLAY_SETTINGS,
-      theme: ['dark', 'blue', 'gray', 'white'].includes(legacyTheme) ? legacyTheme : 'dark',
+      theme: validThemeIds.has(legacyTheme) ? legacyTheme : 'dark',
       cardFontSize: Number.isFinite(legacyCardFs) ? Math.max(4, legacyCardFs) : 14,
       rowFontSize: Number.isFinite(legacyRowFs) ? Math.max(4, legacyRowFs) : 12,
       cardOpacity: Number.isFinite(legacyOpacity) ? legacyOpacity : 1,
@@ -68,14 +71,23 @@ function readStoredApiConfig(): ApiConfig {
 
 function applyThemeToDocument(theme: ThemePreset, settings: DisplaySettings) {
   const root = document.documentElement;
-  if (theme === 'white') {
+  const def = getThemeDefinition(theme);
+
+  if (def.isLight) {
     root.classList.remove('dark');
     root.style.colorScheme = 'light';
   } else {
     root.classList.add('dark');
     root.style.colorScheme = 'dark';
   }
-  root.setAttribute('data-hub-theme', theme);
+
+  root.setAttribute('data-hub-theme', def.id);
+  root.style.setProperty('--hub-bg', def.bg);
+  root.style.setProperty('--hub-surface', def.surface);
+  root.style.setProperty('--hub-surface-alt', def.surfaceAlt);
+  root.style.setProperty('--hub-border', def.border);
+  root.style.setProperty('--hub-text', def.text);
+  root.style.setProperty('--hub-text-muted', def.textMuted);
   root.style.setProperty('--hub-font-family', `'${settings.fontFamily}', sans-serif`);
   document.body.setAttribute('data-thickness', settings.fontWeight);
 }

@@ -21,7 +21,7 @@ import type {
   FaultCategory,
   FaultRecord,
 } from '../types';
-import { CATEGORY_GROUP_ORDER } from '../utils/faultHelpers';
+import { CATEGORY_GROUP_ORDER, isLightTheme } from '../utils/faultHelpers';
 import { PWAInstallButton } from './PWAInstallButton';
 import { ScaledBlock } from './ScaledBlock';
 import { ShiftTimelineRuler, useActiveShiftTimeline } from './ShiftTimelineRuler';
@@ -216,7 +216,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const getConnectorStrokeColor = useCallback(
     (category: FaultCategory, bgRgb: string) => {
-      if (settings.theme === 'white') {
+      if (isLightTheme(settings.theme)) {
         switch (category) {
           case 'mekanik':
             return '#0891b2';
@@ -705,7 +705,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {todayOpenFaults.map((fault) => {
               const timeShort = fault.timePart ? fault.timePart.substring(0, 5) : '--:--';
               const shiftNumber = timeline.shiftNumberById.get(fault.id);
-              const lowOpacityDark = settings.cardOpacity < 0.55 && settings.theme !== 'white';
+              const lowOpacityDark = settings.cardOpacity < 0.55 && !isLightTheme(settings.theme);
               const fgColor = lowOpacityDark ? '#f8fafc' : fault.typeInfo.fgHex;
               const mutedColor = lowOpacityDark
                 ? 'rgba(248, 250, 252, 0.8)'
@@ -851,7 +851,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {groupedPending.map((group) => {
               const isCollapsed = !!collapsedGroups[group.category];
               const sampleInfo = group.items[0].typeInfo;
-              const lowOpacityDark = settings.cardOpacity < 0.55 && settings.theme !== 'white';
+              const lowOpacityDark = settings.cardOpacity < 0.55 && !isLightTheme(settings.theme);
               const headerFg = lowOpacityDark ? '#f8fafc' : sampleInfo.fgHex;
 
               return (

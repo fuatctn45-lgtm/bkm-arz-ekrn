@@ -6,7 +6,26 @@ export type FaultCategory =
   | 'is'
   | 'other';
 
-export type ThemePreset = 'dark' | 'blue' | 'gray' | 'white';
+export type ThemePreset =
+  | 'dark'
+  | 'blue'
+  | 'gray'
+  | 'white'
+  | '#000000'
+  | '#FFFFFF'
+  | '#FF0000'
+  | '#0000FF'
+  | '#808080'
+  | '#333333'
+  | '#00FF00'
+  | '#FFA500'
+  | '#FF00FF'
+  | '#FFFF00'
+  | '#FFD700'
+  | '#F5F5F5'
+  | '#1F91DC'
+  | '#D6C1A6'
+  | '#ED9277';
 export type FontWeightPreset = 'normal' | 'thin' | 'thick';
 export type FontFamilyPreset = 'Plus Jakarta Sans' | 'Outfit' | 'Manrope' | 'DM Sans';
 
