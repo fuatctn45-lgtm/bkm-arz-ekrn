@@ -110,6 +110,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         <div className="mt-4 space-y-4 sm:space-y-5">
           <div>
+            <div className="text-xs font-bold text-[var(--hub-text)] mb-2">Hızlı Ekran Modu</div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    pageScale: 0.6,
+                    cardFontSize: 10,
+                    rowFontSize: 8.5,
+                  }))
+                }
+                className={`rounded-lg border px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                  draft.pageScale <= 0.7
+                    ? 'border-cyan-500 bg-cyan-500/15 text-[var(--hub-text)]'
+                    : 'border-[var(--hub-border)] bg-[var(--hub-surface-alt)] text-[var(--hub-text-muted)] hover:text-[var(--hub-text)]'
+                }`}
+              >
+                TV Modu
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    pageScale: 1,
+                    cardFontSize: 14,
+                    rowFontSize: 12,
+                  }))
+                }
+                className={`rounded-lg border px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                  draft.pageScale === 1 && draft.rowFontSize >= 11
+                    ? 'border-cyan-500 bg-cyan-500/15 text-[var(--hub-text)]'
+                    : 'border-[var(--hub-border)] bg-[var(--hub-surface-alt)] text-[var(--hub-text-muted)] hover:text-[var(--hub-text)]'
+                }`}
+              >
+                Standart
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    pageScale: 0.85,
+                    cardFontSize: 10,
+                    rowFontSize: 9,
+                  }))
+                }
+                className={`rounded-lg border px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                  draft.pageScale === 0.85
+                    ? 'border-cyan-500 bg-cyan-500/15 text-[var(--hub-text)]'
+                    : 'border-[var(--hub-border)] bg-[var(--hub-surface-alt)] text-[var(--hub-text-muted)] hover:text-[var(--hub-text)]'
+                }`}
+              >
+                Android Mobil
+              </button>
+            </div>
+          </div>
+
+          <div>
             <div className="text-xs font-bold text-[var(--hub-text)] mb-2">Arka Plan Teması</div>
             <div className="grid grid-cols-2 gap-2">
               {THEME_OPTIONS.map((t) => {
@@ -330,9 +390,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 }
                 className="w-full rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] px-2.5 py-2 text-xs font-semibold text-[var(--hub-text)] outline-none focus:border-cyan-500"
               >
+                <option value={0.35}>35%</option>
                 <option value={0.4}>40%</option>
                 <option value={0.5}>50%</option>
-                <option value={0.6}>60%</option>
+                <option value={0.6}>60% (TV)</option>
+                <option value={0.7}>70%</option>
                 <option value={0.75}>75%</option>
                 <option value={0.85}>85%</option>
                 <option value={0.9}>90%</option>

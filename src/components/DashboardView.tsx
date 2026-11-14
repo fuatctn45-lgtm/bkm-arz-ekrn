@@ -23,6 +23,7 @@ import type {
 } from '../types';
 import { CATEGORY_GROUP_ORDER } from '../utils/faultHelpers';
 import { PWAInstallButton } from './PWAInstallButton';
+import { ScaledBlock } from './ScaledBlock';
 import { ShiftTimelineRuler } from './ShiftTimelineRuler';
 
 interface DashboardViewProps {
@@ -85,28 +86,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  const cardPadPx = Math.max(4, Math.round(settings.cardFontSize * 0.72));
-  const cardGapPx = Math.max(2, Math.round(settings.cardFontSize * 0.35));
-  const rowPadY = Math.max(1, Math.round(settings.rowFontSize * 0.16));
+  const BASE_FONT_PX = 12;
+  const cardScale = settings.cardFontSize < BASE_FONT_PX ? settings.cardFontSize / BASE_FONT_PX : 1;
+  const effectiveCardFont = settings.cardFontSize < BASE_FONT_PX ? BASE_FONT_PX : settings.cardFontSize;
+  const cardPadPx = Math.max(8, Math.round(effectiveCardFont * 0.72));
+  const cardGapPx = Math.max(4, Math.round(effectiveCardFont * 0.35));
 
-  const scaleStyle: React.CSSProperties | undefined =
-    settings.pageScale !== 1
-      ? {
-          transform: `scale(${settings.pageScale})`,
-          transformOrigin: 'top left',
-          width: `${100 / settings.pageScale}%`,
-        }
-      : undefined;
+  const rowScale = settings.rowFontSize < BASE_FONT_PX ? settings.rowFontSize / BASE_FONT_PX : 1;
+  const effectiveRowFont = settings.rowFontSize < BASE_FONT_PX ? BASE_FONT_PX : settings.rowFontSize;
+  const rowPadY = Math.max(2, Math.round(effectiveRowFont * 0.22));
 
   return (
     <div className="w-full overflow-x-hidden">
+      <ScaledBlock scale={settings.pageScale}>
       <div
         className={
           isFullscreen
-            ? 'w-full px-1.5 sm:px-3 py-2 sm:py-3 space-y-3 sm:space-y-4'
-            : 'w-full px-2 sm:px-5 py-2 sm:py-3 space-y-3 sm:space-y-5'
+            ? 'w-full px-1.5 sm:px-3 py-1.5 sm:py-2 space-y-2 sm:space-y-3'
+            : 'w-full px-2 sm:px-4 py-2 sm:py-2.5 space-y-2.5 sm:space-y-4'
         }
-        style={scaleStyle}
       >
       {/* Top Bar + Flush Shift Timeline Ruler */}
       <div className="space-y-1">
@@ -260,14 +258,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
         ) : (
+          <ScaledBlock scale={cardScale}>
           <div
-            className={
-              settings.cardFontSize <= 10
-                ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 sm:gap-2.5'
-                : 'grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3'
-            }
+            className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-2.5"
             style={{
-              fontSize: `${settings.cardFontSize}px`,
+              fontSize: `${effectiveCardFont}px`,
               lineHeight: 1.2,
               WebkitTextSizeAdjust: '100%',
               textSizeAdjust: '100%',
@@ -294,7 +289,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     backgroundColor: `rgba(${fault.typeInfo.bgRgb}, ${settings.cardOpacity})`,
                     color: fgColor,
                     borderColor: pillBorder,
-                    fontSize: `${settings.cardFontSize}px`,
+                    fontSize: `${effectiveCardFont}px`,
                     lineHeight: 1.2,
                     padding: `${cardPadPx}px`,
                     gap: `${cardGapPx}px`,
@@ -357,6 +352,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               );
             })}
           </div>
+          </ScaledBlock>
         )}
       </section>
 
@@ -427,11 +423,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </button>
 
                   {!isCollapsed && (
+                    <ScaledBlock scale={rowScale}>
                     <div className="w-full overflow-x-auto">
                       <table
                         className="w-full border-collapse text-left"
                         style={{
-                          fontSize: `${settings.rowFontSize}px`,
+                          fontSize: `${effectiveRowFont}px`,
                           lineHeight: 1.2,
                           WebkitTextSizeAdjust: '100%',
                           textSizeAdjust: '100%',
@@ -455,7 +452,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               ? 'rgba(248, 250, 252, 0.85)'
                               : item.typeInfo.mutedFgHex;
                             const cellStyle: React.CSSProperties = {
-                              fontSize: `${settings.rowFontSize}px`,
+                              fontSize: `${effectiveRowFont}px`,
                               lineHeight: 1.2,
                               paddingTop: `${rowPadY}px`,
                               paddingBottom: `${rowPadY}px`,
@@ -527,6 +524,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </tbody>
                       </table>
                     </div>
+                    </ScaledBlock>
                   )}
                 </div>
               );
@@ -535,6 +533,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </section>
       </div>
+      </ScaledBlock>
 
       {/* Fault Detail Modal */}
       {selectedFault && (

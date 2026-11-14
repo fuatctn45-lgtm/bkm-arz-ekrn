@@ -29,9 +29,9 @@ const SHIFT_HOURS = 8;
 const TOTAL_QUARTERS = SHIFT_HOURS * 4; // 32 quarter-hour ticks (every 15 min)
 const SQUARE_SIZE_PX = 16;
 const MIN_HORIZ_GAP_PX = 18; // 16px square + 2px horizontal clearance
-const LANE_STEP_PX = 18; // 16px square + 2px vertical clearance
-const BASE_BAR_HEIGHT_PX = 36; // h-9
-const BASE_BOTTOM_OFFSET_PX = 10; // centers 16px square vertically inside 36px bar
+const LANE_STEP_PX = 17; // 16px square + 1px vertical clearance
+const BASE_BAR_HEIGHT_PX = 28; // h-7
+const BASE_BOTTOM_OFFSET_PX = 6; // centers 16px square vertically inside 28px bar
 
 function getCategoryLetter(category: FaultCategory): string {
   switch (category) {
@@ -287,17 +287,17 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
           className="relative w-full transition-[height] duration-150"
           style={{ height: `${trackHeightPx}px` }}
         >
-          {/* Base 36px Ruler Track Anchored at Bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-9">
+          {/* Base 28px Ruler Track Anchored at Bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-7">
             {/* Colored Active Shift Backdrop */}
             <div
-              className={`absolute inset-y-1 inset-x-0 rounded-sm ${shift.backdropClass}`}
+              className={`absolute inset-y-0.5 inset-x-0 rounded-sm ${shift.backdropClass}`}
               aria-hidden="true"
             />
 
             {/* Live Elapsed Progress Bar */}
             <div
-              className="absolute inset-y-1 left-0 rounded-l-sm transition-all duration-1000 pointer-events-none"
+              className="absolute inset-y-0.5 left-0 rounded-l-sm transition-all duration-1000 pointer-events-none"
               style={{
                 width: `${currentPercent}%`,
                 background: shift.progressGradient,
@@ -320,7 +320,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
               const displayHour =
                 hourVal === 24 ? '00:00' : `${String(hourVal).padStart(2, '0')}:00`;
 
-              const tickHeight = isHour ? 'h-8' : isHalf ? 'h-5' : 'h-3';
+              const tickHeight = isHour ? 'h-6' : isHalf ? 'h-4' : 'h-2.5';
               const tickWidth = isHour ? 'w-[2px]' : 'w-[1.5px]';
               const tickColor = isHour ? shift.majorTickBg : shift.minorTickBg;
 
@@ -333,7 +333,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
                   <div className={`${tickWidth} ${tickHeight} ${tickColor} rounded-full`} />
                   {isHour && (
                     <span
-                      className={`absolute top-8 font-mono text-[8px] min-[420px]:text-[9px] sm:text-[11px] font-extrabold tabular-nums whitespace-nowrap ${shift.hourTextClass}`}
+                      className={`absolute top-6 font-mono text-[8px] min-[420px]:text-[9px] sm:text-[11px] font-extrabold tabular-nums whitespace-nowrap ${shift.hourTextClass}`}
                     >
                       {displayHour}
                     </span>
