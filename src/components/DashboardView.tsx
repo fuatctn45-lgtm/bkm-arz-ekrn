@@ -60,47 +60,97 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [selectedFault, setSelectedFault] = useState<FaultRecord | null>(null);
   const [isTopBarVisible, setIsTopBarVisible] = useState<boolean>(true);
+  const topBarRef = useRef<HTMLDivElement | null>(null);
   const isTopBarHoveredRef = useRef<boolean>(false);
   const hideTimerRef = useRef<number | null>(null);
+  const lastPointerPosRef = useRef<{ x: number; y: number } | null>(null);
 
-  const scheduleHideTopBar = useCallback(() => {
+  const clearHideTimer = useCallback(() => {
     if (hideTimerRef.current !== null) {
       window.clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
     }
+  }, []);
+
+  const scheduleHideTopBar = useCallback(() => {
+    clearHideTimer();
     if (isTopBarHoveredRef.current) return;
     hideTimerRef.current = window.setTimeout(() => {
       if (!isTopBarHoveredRef.current) {
+        if (
+          topBarRef.current &&
+          document.activeElement instanceof HTMLElement &&
+          topBarRef.current.contains(document.activeElement)
+        ) {
+          document.activeElement.blur();
+        }
         setIsTopBarVisible(false);
       }
     }, 4000);
-  }, []);
+  }, [clearHideTimer]);
 
   useEffect(() => {
-    const handleUserActivity = () => {
+    const activateTopBar = () => {
       setIsTopBarVisible(true);
       scheduleHideTopBar();
     };
 
+    const handlePointerMove = (e: PointerEvent) => {
+      // Ignore touch/synthetic pointermove jitter so Android touch devices hide reliably
+      if (e.pointerType === 'touch') return;
+      const prev = lastPointerPosRef.current;
+      if (prev && Math.abs(e.clientX - prev.x) < 4 && Math.abs(e.clientY - prev.y) < 4) {
+        return;
+      }
+      lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
+      activateTopBar();
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Ignore synthetic mousemove fired without actual cursor displacement (e.g. after tap or layout shift)
+      const prev = lastPointerPosRef.current;
+      if (prev && Math.abs(e.clientX - prev.x) < 4 && Math.abs(e.clientY - prev.y) < 4) {
+        return;
+      }
+      lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
+      activateTopBar();
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') {
+        // Never keep hover lock active from synthetic touch events on Android
+        isTopBarHoveredRef.current = false;
+      }
+      lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
+      activateTopBar();
+    };
+
+    const handleTouchStart = () => {
+      isTopBarHoveredRef.current = false;
+      activateTopBar();
+    };
+
+    const handleKeyDown = () => {
+      activateTopBar();
+    };
+
     scheduleHideTopBar();
 
-    window.addEventListener('mousemove', handleUserActivity, { passive: true });
-    window.addEventListener('pointermove', handleUserActivity, { passive: true });
-    window.addEventListener('mousedown', handleUserActivity, { passive: true });
-    window.addEventListener('touchstart', handleUserActivity, { passive: true });
-    window.addEventListener('keydown', handleUserActivity);
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('pointerdown', handlePointerDown, { passive: true });
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      if (hideTimerRef.current !== null) {
-        window.clearTimeout(hideTimerRef.current);
-      }
-      window.removeEventListener('mousemove', handleUserActivity);
-      window.removeEventListener('pointermove', handleUserActivity);
-      window.removeEventListener('mousedown', handleUserActivity);
-      window.removeEventListener('touchstart', handleUserActivity);
-      window.removeEventListener('keydown', handleUserActivity);
+      clearHideTimer();
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [scheduleHideTopBar]);
+  }, [clearHideTimer, scheduleHideTopBar]);
 
   const groupedPending = useMemo(() => {
     return CATEGORY_GROUP_ORDER.map((group) => ({
@@ -150,23 +200,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       >
       {/* Top Bar + Flush Shift Timeline Ruler */}
       <div className={isTopBarVisible ? 'space-y-1' : 'space-y-0'}>
-        {/* Single Compact KPI & Status Strip (auto-hides on mouse idle so page expands) */}
+        {/* Single Compact KPI & Status Strip (auto-hides on mouse/touch idle so page expands) */}
         <div
-          onMouseEnter={() => {
-            isTopBarHoveredRef.current = true;
-            if (hideTimerRef.current !== null) {
-              window.clearTimeout(hideTimerRef.current);
-              hideTimerRef.current = null;
+          ref={topBarRef}
+          onPointerEnter={(e) => {
+            if (e.pointerType === 'mouse') {
+              isTopBarHoveredRef.current = true;
+              clearHideTimer();
             }
           }}
-          onMouseLeave={() => {
-            isTopBarHoveredRef.current = false;
-            scheduleHideTopBar();
+          onPointerLeave={(e) => {
+            if (e.pointerType === 'mouse') {
+              isTopBarHoveredRef.current = false;
+              scheduleHideTopBar();
+            }
           }}
-          className={`transition-all duration-300 ease-out overflow-hidden ${
-            isTopBarVisible ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+          aria-hidden={!isTopBarVisible}
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+            isTopBarVisible
+              ? 'grid-rows-[1fr] opacity-100'
+              : 'grid-rows-[0fr] opacity-0 pointer-events-none'
           }`}
         >
+        <div className="min-h-0 overflow-hidden">
         <section
           aria-label="Anlık arıza özeti"
           className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-2.5 sm:px-4 py-1.5 sm:py-2"
@@ -265,6 +321,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
         </section>
+        </div>
         </div>
 
         <ShiftTimelineRuler
