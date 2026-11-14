@@ -59,11 +59,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [selectedFault, setSelectedFault] = useState<FaultRecord | null>(null);
-  const [isTopBarVisible, setIsTopBarVisible] = useState<boolean>(true);
+  const [isMenuVisible, setIsMenuVisible] = useState<boolean>(true);
   const timeline = useActiveShiftTimeline(allFaults);
   const boardContainerRef = useRef<HTMLDivElement | null>(null);
-  const topBarRef = useRef<HTMLDivElement | null>(null);
-  const isTopBarHoveredRef = useRef<boolean>(false);
+  const bottomMenuRef = useRef<HTMLDivElement | null>(null);
+  const isMenuHoveredRef = useRef<boolean>(false);
   const hideTimerRef = useRef<number | null>(null);
   const lastPointerPosRef = useRef<{ x: number; y: number } | null>(null);
   const [faultConnectors, setFaultConnectors] = useState<
@@ -88,27 +88,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   }, []);
 
-  const scheduleHideTopBar = useCallback(() => {
+  const scheduleHideMenu = useCallback(() => {
     clearHideTimer();
-    if (isTopBarHoveredRef.current) return;
+    if (isMenuHoveredRef.current) return;
     hideTimerRef.current = window.setTimeout(() => {
-      if (!isTopBarHoveredRef.current) {
+      if (!isMenuHoveredRef.current) {
         if (
-          topBarRef.current &&
+          bottomMenuRef.current &&
           document.activeElement instanceof HTMLElement &&
-          topBarRef.current.contains(document.activeElement)
+          bottomMenuRef.current.contains(document.activeElement)
         ) {
           document.activeElement.blur();
         }
-        setIsTopBarVisible(false);
+        setIsMenuVisible(false);
       }
     }, 4000);
   }, [clearHideTimer]);
 
   useEffect(() => {
-    const activateTopBar = () => {
-      setIsTopBarVisible(true);
-      scheduleHideTopBar();
+    const activateMenu = () => {
+      setIsMenuVisible(true);
+      scheduleHideMenu();
     };
 
     const handlePointerMove = (e: PointerEvent) => {
@@ -119,7 +119,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         return;
       }
       lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
-      activateTopBar();
+      activateMenu();
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -129,28 +129,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         return;
       }
       lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
-      activateTopBar();
+      activateMenu();
     };
 
     const handlePointerDown = (e: PointerEvent) => {
       if (e.pointerType !== 'mouse') {
         // Never keep hover lock active from synthetic touch events on Android
-        isTopBarHoveredRef.current = false;
+        isMenuHoveredRef.current = false;
       }
       lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
-      activateTopBar();
+      activateMenu();
     };
 
     const handleTouchStart = () => {
-      isTopBarHoveredRef.current = false;
-      activateTopBar();
+      isMenuHoveredRef.current = false;
+      activateMenu();
     };
 
     const handleKeyDown = () => {
-      activateTopBar();
+      activateMenu();
     };
 
-    scheduleHideTopBar();
+    scheduleHideMenu();
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
@@ -166,7 +166,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [clearHideTimer, scheduleHideTopBar]);
+  }, [clearHideTimer, scheduleHideMenu]);
 
   const groupedPending = useMemo(() => {
     return CATEGORY_GROUP_ORDER.map((group) => ({
@@ -376,24 +376,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   }, [measureConnectors, allFaults, settings.cardFontSize, settings.rulerFontSize]);
 
-  // Keep connectors smoothly synced during the 300ms top-bar expand/collapse transition
-  useEffect(() => {
-    let active = true;
-    const start = performance.now();
-    const tick = () => {
-      if (!active) return;
-      measureConnectors();
-      if (performance.now() - start < 380) {
-        window.requestAnimationFrame(tick);
-      }
-    };
-    const id = window.requestAnimationFrame(tick);
-    return () => {
-      active = false;
-      window.cancelAnimationFrame(id);
-    };
-  }, [isTopBarVisible, measureConnectors]);
-
   const minCardTopY =
     faultConnectors.length > 0
       ? Math.min(...faultConnectors.map((c) => c.y1))
@@ -406,8 +388,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         ref={boardContainerRef}
         className={
           isFullscreen
-            ? `relative w-full px-1.5 sm:px-3 ${isTopBarVisible ? 'py-1.5 sm:py-2' : 'pt-0.5 pb-1.5'} space-y-2 sm:space-y-3`
-            : `relative w-full px-2 sm:px-4 ${isTopBarVisible ? 'py-2 sm:py-2.5' : 'pt-0.5 pb-2'} space-y-2 sm:space-y-3`
+            ? 'relative w-full px-1.5 sm:px-3 pt-1 pb-16 space-y-2 sm:space-y-3'
+            : 'relative w-full px-2 sm:px-4 pt-1.5 pb-16 space-y-2 sm:space-y-3'
         }
       >
       {faultConnectors.length > 0 && (
@@ -505,132 +487,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           })}
         </svg>
       )}
-      {/* Top Bar + Flush Shift Timeline Ruler */}
-      <div className={isTopBarVisible ? 'space-y-1' : 'space-y-0'}>
-        {/* Single Compact KPI & Status Strip (auto-hides on mouse/touch idle so page expands) */}
-        <div
-          ref={topBarRef}
-          onPointerEnter={(e) => {
-            if (e.pointerType === 'mouse') {
-              isTopBarHoveredRef.current = true;
-              clearHideTimer();
-            }
-          }}
-          onPointerLeave={(e) => {
-            if (e.pointerType === 'mouse') {
-              isTopBarHoveredRef.current = false;
-              scheduleHideTopBar();
-            }
-          }}
-          aria-hidden={!isTopBarVisible}
-          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
-            isTopBarVisible
-              ? 'grid-rows-[1fr] opacity-100'
-              : 'grid-rows-[0fr] opacity-0 pointer-events-none'
-          }`}
-        >
-        <div className="min-h-0 overflow-hidden">
-        <section
-          aria-label="Anlık arıza özeti"
-          className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-2.5 sm:px-4 py-1.5 sm:py-2"
-        >
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-5">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <span className="text-[10px] sm:text-xs font-bold uppercase text-[var(--hub-text-muted)]">Toplam</span>
-              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
-                {stats.total}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
-              <Wrench className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
-              <span className="text-[10px] sm:text-xs font-bold uppercase">Mek</span>
-              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
-                {stats.mekanik}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-              <Bolt className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
-              <span className="text-[10px] sm:text-xs font-bold uppercase">Elek</span>
-              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
-                {stats.elektrik}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
-              <ShieldAlert className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
-              <span className="text-[10px] sm:text-xs font-bold uppercase">İSG</span>
-              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
-                {stats.isg}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 text-[var(--hub-text-muted)]">
-              <History className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
-              <span className="text-[10px] sm:text-xs font-bold uppercase">Tekrar</span>
-              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
-                {stats.recurring}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
-              <CalendarClock className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
-              <span className="text-[10px] sm:text-xs font-bold uppercase">P.Bakım</span>
-              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
-                {stats.planli}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
-            <PWAInstallButton />
-            <span className="font-mono text-[10px] sm:text-xs font-semibold tabular-nums text-[var(--hub-text-muted)] pr-0.5 sm:pr-1">
-              {lastSyncText} · {refreshCountdown}s
-            </span>
-
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={isLoading}
-              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-1.5 sm:p-2 text-[var(--hub-text)] hover:opacity-90 disabled:opacity-60 cursor-pointer"
-              title="Şimdi Yenile"
-              aria-label="Şimdi Yenile"
-            >
-              <RefreshCw
-                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? 'animate-spin' : ''}`}
-                aria-hidden="true"
-              />
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-1.5 sm:p-2 text-[var(--hub-text)] hover:opacity-90 cursor-pointer"
-              title="Görünüm ve Tema Ayarları"
-              aria-label="Görünüm ve Tema Ayarları"
-            >
-              <Sliders className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              onClick={onToggleFullscreen}
-              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-1.5 sm:p-2 text-[var(--hub-text)] hover:opacity-90 cursor-pointer"
-              title={isFullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
-              aria-label={isFullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
-              ) : (
-                <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
-              )}
-            </button>
-          </div>
-        </section>
-        </div>
-        </div>
-
+      {/* Flush Shift Timeline Ruler pinned at top */}
+      <div>
         <ShiftTimelineRuler
           timeline={timeline}
           fontSize={settings.rulerFontSize}
@@ -813,10 +671,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar (faded when mouse is idle, normal when mouse moves) */}
       <section
         aria-labelledby="pending-faults-heading"
-        className={`space-y-2 sm:space-y-3 transition-all duration-300 ${
-          isTopBarVisible
-            ? 'opacity-100 saturate-100'
-            : 'opacity-45 saturate-[0.55]'
+        className={`space-y-2 sm:space-y-3 transition-opacity duration-300 ${
+          isMenuVisible ? 'opacity-100' : 'opacity-45'
         }`}
       >
         <div className="flex items-center justify-between border-b border-[var(--hub-border)] pb-1.5 sm:pb-2">
@@ -995,6 +851,128 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </section>
       </div>
       </ScaledBlock>
+
+      {/* Bottom Docked KPI & Status Menu (auto-hides on mouse/touch idle) */}
+      <div
+        ref={bottomMenuRef}
+        onPointerEnter={(e) => {
+          if (e.pointerType === 'mouse') {
+            isMenuHoveredRef.current = true;
+            clearHideTimer();
+          }
+        }}
+        onPointerLeave={(e) => {
+          if (e.pointerType === 'mouse') {
+            isMenuHoveredRef.current = false;
+            scheduleHideMenu();
+          }
+        }}
+        aria-hidden={!isMenuVisible}
+        className={`fixed bottom-2 inset-x-2 sm:inset-x-4 z-40 transition-all duration-300 ease-out ${
+          isMenuVisible
+            ? 'translate-y-0 opacity-100'
+            : 'translate-y-4 opacity-0 pointer-events-none'
+        }`}
+      >
+        <section
+          aria-label="Anlık arıza özeti"
+          className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-2.5 sm:px-4 py-1.5 sm:py-2 shadow-2xl"
+        >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-5">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-[10px] sm:text-xs font-bold uppercase text-[var(--hub-text-muted)]">Toplam</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+                {stats.total}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
+              <Wrench className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">Mek</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+                {stats.mekanik}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+              <Bolt className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">Elek</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+                {stats.elektrik}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+              <ShieldAlert className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">İSG</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+                {stats.isg}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 text-[var(--hub-text-muted)]">
+              <History className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">Tekrar</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+                {stats.recurring}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
+              <CalendarClock className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase">P.Bakım</span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold tabular-nums text-[var(--hub-text)]">
+                {stats.planli}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
+            <PWAInstallButton />
+            <span className="font-mono text-[10px] sm:text-xs font-semibold tabular-nums text-[var(--hub-text-muted)] pr-0.5 sm:pr-1">
+              {lastSyncText} · {refreshCountdown}s
+            </span>
+
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isLoading}
+              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-1.5 sm:p-2 text-[var(--hub-text)] hover:opacity-90 disabled:opacity-60 cursor-pointer"
+              title="Şimdi Yenile"
+              aria-label="Şimdi Yenile"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? 'animate-spin' : ''}`}
+                aria-hidden="true"
+              />
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-1.5 sm:p-2 text-[var(--hub-text)] hover:opacity-90 cursor-pointer"
+              title="Görünüm ve Tema Ayarları"
+              aria-label="Görünüm ve Tema Ayarları"
+            >
+              <Sliders className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] p-1.5 sm:p-2 text-[var(--hub-text)] hover:opacity-90 cursor-pointer"
+              title={isFullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
+              aria-label={isFullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
+              ) : (
+                <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </section>
+      </div>
 
       {/* Fault Detail Modal */}
       {selectedFault && (
