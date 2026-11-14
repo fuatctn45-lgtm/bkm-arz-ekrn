@@ -353,15 +353,15 @@ export function getTypeInfo(turRaw?: string): FaultTypeInfo {
     return {
       category: 'is',
       label: 'Yapılan İş',
-      accentHex: '#22d3ee',
-      bgRgb: '56, 189, 248',
-      fgHex: '#020617',
-      mutedFgHex: 'rgba(2, 6, 23, 0.78)',
-      cardBgLight: 'rgba(14, 165, 233, 0.14)',
-      cardBgDark: 'rgba(2, 132, 199, 0.22)',
-      badgeTextClass: 'text-sky-800 dark:text-sky-300',
-      surfaceTintClass: 'bg-sky-50/90 dark:bg-sky-950/40',
-      borderTintClass: 'border-sky-300 dark:border-sky-800/70',
+      accentHex: '#a25586',
+      bgRgb: '162, 85, 134',
+      fgHex: '#ffffff',
+      mutedFgHex: 'rgba(255, 255, 255, 0.88)',
+      cardBgLight: 'rgba(162, 85, 134, 0.14)',
+      cardBgDark: 'rgba(162, 85, 134, 0.25)',
+      badgeTextClass: 'text-[#833b69] dark:text-[#e3a8ce]',
+      surfaceTintClass: 'bg-[#a25586]/10 dark:bg-[#a25586]/25',
+      borderTintClass: 'border-[#a25586]/45 dark:border-[#a25586]/65',
     };
   }
   return {

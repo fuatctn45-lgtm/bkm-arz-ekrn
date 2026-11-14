@@ -227,7 +227,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           case 'planli':
             return '#ea580c';
           case 'is':
-            return '#0284c7';
+            return '#a25586';
           default:
             return '#475569';
         }
@@ -711,7 +711,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ? 'rgba(248, 250, 252, 0.8)'
                 : fault.typeInfo.mutedFgHex;
               const pillBorder =
-                fault.typeInfo.category === 'isg' || lowOpacityDark
+                fault.typeInfo.fgHex === '#ffffff' || lowOpacityDark
                   ? 'rgba(255, 255, 255, 0.35)'
                   : 'rgba(2, 6, 23, 0.28)';
 
@@ -768,7 +768,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         color: fgColor,
                         borderColor: pillBorder,
                         backgroundColor:
-                          fault.typeInfo.category === 'isg' || lowOpacityDark
+                          fault.typeInfo.fgHex === '#ffffff' || lowOpacityDark
                             ? 'rgba(0, 0, 0, 0.22)'
                             : 'rgba(255, 255, 255, 0.35)',
                       }}
