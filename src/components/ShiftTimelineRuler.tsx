@@ -34,6 +34,8 @@ export interface ActiveShiftTimeline {
 interface ShiftTimelineRulerProps {
   timeline: ActiveShiftTimeline;
   fontSize?: number;
+  openFaultIds?: Set<string>;
+  newestFaultId?: string | null;
   onSelectFault: (fault: FaultRecord) => void;
 }
 
@@ -241,6 +243,8 @@ export function useActiveShiftTimeline(faults: FaultRecord[]): ActiveShiftTimeli
 export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
   timeline,
   fontSize = 11,
+  openFaultIds,
+  newestFaultId,
   onSelectFault,
 }) => {
   const { now, shift, currentPercent, numberedItems } = timeline;
@@ -428,26 +432,37 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
             <div className="w-[2px] flex-1 bg-rose-500/80 shadow-[0_0_6px_rgba(244,63,94,0.65)]" />
           </div>
 
-          {/* Today's Shift Fault Markers (collision-free numbered colored squares) */}
-          {faultMarkers.map(({ fault, percent, timeShort, shiftNumber, lane }) => (
-            <button
-              key={fault.id}
-              type="button"
-              data-ruler-fault-id={fault.id}
-              onClick={() => onSelectFault(fault)}
-              style={{
-                left: `${percent}%`,
-                bottom: `${BASE_BOTTOM_OFFSET_PX + lane * LANE_STEP_PX}px`,
-                backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
-                color: fault.typeInfo.fgHex,
-              }}
-              title={`#${shiftNumber} · ${timeShort} · ${fault.machine} (${fault.typeInfo.label}) — ${fault.description}`}
-              aria-label={`#${shiftNumber} ${timeShort} ${fault.machine} (${fault.typeInfo.label}) arıza detayı`}
-              className="absolute -translate-x-1/2 z-20 flex h-4 min-w-[16px] px-[2px] items-center justify-center rounded-[2px] font-mono text-[9.5px] font-black leading-none tabular-nums shadow-xs transition-transform hover:scale-125 hover:z-30 cursor-pointer"
-            >
-              {shiftNumber}
-            </button>
-          ))}
+          {/* Today's Shift Fault Markers (collision-free numbered colored squares; faded if closed, highlighted if newest open) */}
+          {faultMarkers.map(({ fault, percent, timeShort, shiftNumber, lane }) => {
+            const isOpen = openFaultIds ? openFaultIds.has(fault.id) : true;
+            const isNewest = newestFaultId === fault.id;
+
+            return (
+              <button
+                key={fault.id}
+                type="button"
+                data-ruler-fault-id={fault.id}
+                onClick={() => onSelectFault(fault)}
+                style={{
+                  left: `${percent}%`,
+                  bottom: `${BASE_BOTTOM_OFFSET_PX + lane * LANE_STEP_PX}px`,
+                  backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
+                  color: fault.typeInfo.fgHex,
+                }}
+                title={`#${shiftNumber} · ${timeShort} · ${fault.machine} (${fault.typeInfo.label})${isOpen ? '' : ' [Kapandı]'} — ${fault.description}`}
+                aria-label={`#${shiftNumber} ${timeShort} ${fault.machine} (${fault.typeInfo.label}) arıza detayı`}
+                className={`absolute -translate-x-1/2 flex h-4 min-w-[16px] px-[2px] items-center justify-center rounded-[2px] font-mono text-[9.5px] font-black leading-none tabular-nums transition-all hover:scale-125 hover:opacity-100 hover:z-30 cursor-pointer ${
+                  isNewest
+                    ? 'z-[25] opacity-100 scale-110 ring-2 ring-slate-900/80 dark:ring-white/95 shadow-md'
+                    : isOpen
+                      ? 'z-20 opacity-100 shadow-xs'
+                      : 'z-[18] opacity-40 saturate-75 shadow-none'
+                }`}
+              >
+                {shiftNumber}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

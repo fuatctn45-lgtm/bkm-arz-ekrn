@@ -175,6 +175,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     })).filter((group) => group.items.length > 0);
   }, [pendingFaults]);
 
+  const openFaultIdSet = useMemo(
+    () => new Set(todayOpenFaults.map((f) => f.id)),
+    [todayOpenFaults]
+  );
+
+  const newestOpenFaultId =
+    todayOpenFaults.length > 0
+      ? todayOpenFaults[todayOpenFaults.length - 1].id
+      : null;
+
   const toggleGroup = (category: string) => {
     setCollapsedGroups((prev) => ({ ...prev, [category]: !prev[category] }));
   };
@@ -468,7 +478,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   strokeWidth={1.8}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeOpacity={0.88}
+                  strokeOpacity={0.9}
                 />
 
                 {/* Rounded anchor dot on open fault card */}
@@ -624,6 +634,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <ShiftTimelineRuler
           timeline={timeline}
           fontSize={settings.rulerFontSize}
+          openFaultIds={openFaultIdSet}
+          newestFaultId={newestOpenFaultId}
           onSelectFault={setSelectedFault}
         />
       </div>
@@ -798,8 +810,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </section>
 
-      {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar */}
-      <section aria-labelledby="pending-faults-heading" className="space-y-2 sm:space-y-3">
+      {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar (faded when mouse is idle, normal when mouse moves) */}
+      <section
+        aria-labelledby="pending-faults-heading"
+        className={`space-y-2 sm:space-y-3 transition-all duration-300 ${
+          isTopBarVisible
+            ? 'opacity-100 saturate-100'
+            : 'opacity-45 saturate-[0.55]'
+        }`}
+      >
         <div className="flex items-center justify-between border-b border-[var(--hub-border)] pb-1.5 sm:pb-2">
           <h2
             id="pending-faults-heading"
