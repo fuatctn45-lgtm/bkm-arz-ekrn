@@ -250,6 +250,13 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
   const { now, shift, currentPercent, numberedItems } = timeline;
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [trackWidthPx, setTrackWidthPx] = useState<number>(1200);
+  const [hoveredMarker, setHoveredMarker] = useState<{
+    fault: FaultRecord;
+    shiftNumber: number;
+    timeShort: string;
+    percent: number;
+    isOpen: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const el = trackRef.current;
@@ -387,11 +394,22 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
                   {isHour && (
                     <span
                       data-ruler-label="true"
-                      className={`absolute bottom-[29px] z-[15] font-mono font-extrabold tabular-nums whitespace-nowrap leading-none ${shift.hourTextClass}`}
+                      className={`absolute bottom-[29px] z-[15] font-mono font-extrabold tabular-nums whitespace-nowrap leading-none ${
+                        idx === 0
+                          ? 'left-1/2 translate-x-0'
+                          : idx === TOTAL_QUARTERS
+                            ? 'right-1/2 translate-x-0'
+                            : ''
+                      } ${shift.hourTextClass}`}
                       style={{
                         fontSize: `${labelBasePx}px`,
                         transform: labelScale !== 1 ? `scale(${labelScale})` : undefined,
-                        transformOrigin: 'bottom center',
+                        transformOrigin:
+                          idx === 0
+                            ? 'bottom left'
+                            : idx === TOTAL_QUARTERS
+                              ? 'bottom right'
+                              : 'bottom center',
                       }}
                     >
                       {displayHour}
@@ -432,7 +450,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
             <div className="w-[2px] flex-1 bg-rose-500/80 shadow-[0_0_6px_rgba(244,63,94,0.65)]" />
           </div>
 
-          {/* Today's Shift Fault Markers (collision-free numbered colored squares; faded if closed, highlighted if newest open) */}
+          {/* Today's Shift Fault Markers (all 100% crisp & visible for shift handover visibility) */}
           {faultMarkers.map(({ fault, percent, timeShort, shiftNumber, lane }) => {
             const isOpen = openFaultIds ? openFaultIds.has(fault.id) : true;
             const isNewest = newestFaultId === fault.id;
@@ -443,26 +461,62 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
                 type="button"
                 data-ruler-fault-id={fault.id}
                 onClick={() => onSelectFault(fault)}
+                onMouseEnter={() =>
+                  setHoveredMarker({ fault, shiftNumber, timeShort, percent, isOpen })
+                }
+                onMouseLeave={() => setHoveredMarker(null)}
+                onFocus={() =>
+                  setHoveredMarker({ fault, shiftNumber, timeShort, percent, isOpen })
+                }
+                onBlur={() => setHoveredMarker(null)}
                 style={{
                   left: `${percent}%`,
                   bottom: `${BASE_BOTTOM_OFFSET_PX + lane * LANE_STEP_PX}px`,
                   backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
                   color: fault.typeInfo.fgHex,
                 }}
-                title={`#${shiftNumber} · ${timeShort} · ${fault.machine} (${fault.typeInfo.label})${isOpen ? '' : ' [Kapandı]'} — ${fault.description}`}
+                title={`#${shiftNumber} · ${timeShort} · ${fault.machine} (${fault.typeInfo.label})${isOpen ? '' : ` [${fault.technician}]`} — ${fault.description}`}
                 aria-label={`#${shiftNumber} ${timeShort} ${fault.machine} (${fault.typeInfo.label}) arıza detayı`}
-                className={`absolute -translate-x-1/2 flex h-4 min-w-[16px] px-[2px] items-center justify-center rounded-[2px] font-mono text-[9.5px] font-black leading-none tabular-nums transition-all hover:scale-125 hover:opacity-100 hover:z-30 cursor-pointer ${
+                className={`absolute -translate-x-1/2 flex h-4 min-w-[16px] px-[2px] items-center justify-center rounded-[2px] font-mono text-[9.5px] font-black leading-none tabular-nums opacity-100 transition-transform hover:scale-125 hover:z-30 cursor-pointer ${
                   isNewest
-                    ? 'z-[25] opacity-100 scale-110 ring-2 ring-slate-900/80 dark:ring-white/95 shadow-md'
+                    ? 'z-[25] scale-110 ring-2 ring-slate-900/80 dark:ring-white/95 shadow-md'
                     : isOpen
-                      ? 'z-20 opacity-100 shadow-xs'
-                      : 'z-[18] opacity-40 saturate-75 shadow-none'
+                      ? 'z-20 shadow-sm ring-1 ring-black/25 dark:ring-white/30'
+                      : 'z-20 shadow-xs ring-1 ring-black/20 dark:ring-white/20'
                 }`}
               >
                 {shiftNumber}
               </button>
             );
           })}
+
+          {hoveredMarker && (
+            <div
+              role="tooltip"
+              className="pointer-events-none absolute bottom-full mb-2 z-40 max-w-[280px] rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface)] px-2.5 py-1.5 text-[11px] text-[var(--hub-text)] shadow-xl"
+              style={{
+                left: `${Math.max(12, Math.min(88, hoveredMarker.percent))}%`,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <div className="flex items-center justify-between gap-2 font-extrabold">
+                <span className="truncate">
+                  #{hoveredMarker.shiftNumber} · {hoveredMarker.fault.machine}
+                </span>
+                <span className="font-mono text-[10px] text-[var(--hub-text-muted)] shrink-0">
+                  {hoveredMarker.timeShort}
+                </span>
+              </div>
+              <div className="mt-0.5 line-clamp-2 text-[10px] text-[var(--hub-text)]">
+                {hoveredMarker.fault.description}
+              </div>
+              <div className="mt-0.5 text-[10px] font-semibold text-[var(--hub-text-muted)] truncate">
+                {hoveredMarker.isOpen
+                  ? 'Açık (Personel Bekliyor)'
+                  : `Görevli: ${hoveredMarker.fault.technician}`}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
