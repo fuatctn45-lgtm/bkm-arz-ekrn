@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Bolt,
@@ -59,6 +59,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [selectedFault, setSelectedFault] = useState<FaultRecord | null>(null);
+  const [isTopBarVisible, setIsTopBarVisible] = useState<boolean>(true);
+  const isTopBarHoveredRef = useRef<boolean>(false);
+  const hideTimerRef = useRef<number | null>(null);
+
+  const scheduleHideTopBar = useCallback(() => {
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    if (isTopBarHoveredRef.current) return;
+    hideTimerRef.current = window.setTimeout(() => {
+      if (!isTopBarHoveredRef.current) {
+        setIsTopBarVisible(false);
+      }
+    }, 4000);
+  }, []);
+
+  useEffect(() => {
+    const handleUserActivity = () => {
+      setIsTopBarVisible(true);
+      scheduleHideTopBar();
+    };
+
+    scheduleHideTopBar();
+
+    window.addEventListener('mousemove', handleUserActivity, { passive: true });
+    window.addEventListener('pointermove', handleUserActivity, { passive: true });
+    window.addEventListener('mousedown', handleUserActivity, { passive: true });
+    window.addEventListener('touchstart', handleUserActivity, { passive: true });
+    window.addEventListener('keydown', handleUserActivity);
+
+    return () => {
+      if (hideTimerRef.current !== null) {
+        window.clearTimeout(hideTimerRef.current);
+      }
+      window.removeEventListener('mousemove', handleUserActivity);
+      window.removeEventListener('pointermove', handleUserActivity);
+      window.removeEventListener('mousedown', handleUserActivity);
+      window.removeEventListener('touchstart', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
+    };
+  }, [scheduleHideTopBar]);
 
   const groupedPending = useMemo(() => {
     return CATEGORY_GROUP_ORDER.map((group) => ({
@@ -102,13 +144,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div
         className={
           isFullscreen
-            ? 'w-full px-1.5 sm:px-3 py-1.5 sm:py-2 space-y-2 sm:space-y-3'
-            : 'w-full px-2 sm:px-4 py-2 sm:py-2.5 space-y-2.5 sm:space-y-4'
+            ? `w-full px-1.5 sm:px-3 ${isTopBarVisible ? 'py-1.5 sm:py-2' : 'pt-0.5 pb-1.5'} space-y-2 sm:space-y-3`
+            : `w-full px-2 sm:px-4 ${isTopBarVisible ? 'py-2 sm:py-2.5' : 'pt-0.5 pb-2'} space-y-2 sm:space-y-3`
         }
       >
       {/* Top Bar + Flush Shift Timeline Ruler */}
-      <div className="space-y-1">
-        {/* Single Compact KPI & Status Strip */}
+      <div className={isTopBarVisible ? 'space-y-1' : 'space-y-0'}>
+        {/* Single Compact KPI & Status Strip (auto-hides on mouse idle so page expands) */}
+        <div
+          onMouseEnter={() => {
+            isTopBarHoveredRef.current = true;
+            if (hideTimerRef.current !== null) {
+              window.clearTimeout(hideTimerRef.current);
+              hideTimerRef.current = null;
+            }
+          }}
+          onMouseLeave={() => {
+            isTopBarHoveredRef.current = false;
+            scheduleHideTopBar();
+          }}
+          className={`transition-all duration-300 ease-out overflow-hidden ${
+            isTopBarVisible ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+          }`}
+        >
         <section
           aria-label="Anlık arıza özeti"
           className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-2.5 sm:px-4 py-1.5 sm:py-2"
@@ -207,6 +265,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
         </section>
+        </div>
 
         <ShiftTimelineRuler
           faults={allFaults}
@@ -260,7 +319,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         ) : (
           <ScaledBlock scale={cardScale}>
           <div
-            className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-2.5"
+            className="flex flex-wrap items-stretch gap-1.5 sm:gap-2"
             style={{
               fontSize: `${effectiveCardFont}px`,
               lineHeight: 1.2,
@@ -293,13 +352,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     lineHeight: 1.2,
                     padding: `${cardPadPx}px`,
                     gap: `${cardGapPx}px`,
+                    width: 'fit-content',
+                    minWidth: '10.5em',
+                    maxWidth: 'min(17em, 100%)',
                     maxHeight: '999999px',
                     WebkitTextSizeAdjust: '100%',
                     textSizeAdjust: '100%',
                   }}
                   className="group text-left rounded-lg sm:rounded-xl border shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:brightness-95 cursor-pointer flex flex-col min-w-0"
                 >
-                  <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
+                  <div className="flex items-center justify-between gap-2 w-full min-w-0">
                     <span
                       className="inline-flex items-center gap-1 font-extrabold uppercase tracking-wide min-w-0"
                       style={{ fontSize: '0.82em', color: fgColor }}
@@ -331,17 +393,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
 
                   <div
-                    className="flex items-center justify-between gap-1.5 w-full min-w-0"
-                    style={{ fontSize: '0.78em', color: mutedColor }}
+                    className="flex items-center justify-between gap-2 w-full min-w-0"
+                    style={{ fontSize: '0.76em', color: mutedColor }}
                   >
                     <span className="font-bold truncate">Bildiren: {fault.reporter}</span>
-                    {fault.shift && <span className="font-bold shrink-0 truncate max-w-[45%]">{fault.shift}</span>}
+                    {fault.shift && <span className="font-bold truncate max-w-[7em]">{fault.shift}</span>}
                   </div>
 
                   <p
                     className="font-extrabold leading-snug underline underline-offset-2 line-clamp-2 w-full"
                     style={{
-                      fontSize: '0.95em',
+                      fontSize: '0.92em',
                       color: fgColor,
                       maxHeight: '999999px',
                     }}
