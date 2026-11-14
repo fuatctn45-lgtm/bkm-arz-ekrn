@@ -316,9 +316,11 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
   const halfLabelScale = labelScale * 0.85;
 
   const pillFontPx = Math.min(28, Math.max(13, Math.round(clampedFontPx * 1.5)));
-  const pillPullUpPx = Math.ceil(pillFontPx * 1.15 + 6);
+  const pillBoxHeightPx = Math.ceil(pillFontPx * 1.15 + 6);
+  const labelsTopAboveTrackPx = Math.max(0, 29 + Math.ceil(clampedFontPx) - trackHeightPx + 3);
+  const pillPullUpPx = labelsTopAboveTrackPx + pillBoxHeightPx + 4;
 
-  const bottomPadPx = Math.max(12, Math.round(clampedFontPx * 1.45 + 6));
+  const bottomPadPx = 4;
   const topPadPx = pillPullUpPx + 5;
 
   return (
@@ -374,17 +376,18 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
               return (
                 <div
                   key={idx}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col items-center"
+                  className="absolute inset-y-0 -translate-x-1/2 flex flex-col items-center justify-center"
                   style={{ left: `${pct}%` }}
                 >
                   <div className={`${tickWidth} ${tickHeight} ${tickColor} rounded-full`} />
                   {isHour && (
                     <span
-                      className={`absolute top-6 font-mono font-extrabold tabular-nums whitespace-nowrap leading-none ${shift.hourTextClass}`}
+                      data-ruler-label="true"
+                      className={`absolute bottom-[29px] z-[15] font-mono font-extrabold tabular-nums whitespace-nowrap leading-none ${shift.hourTextClass}`}
                       style={{
                         fontSize: `${labelBasePx}px`,
                         transform: labelScale !== 1 ? `scale(${labelScale})` : undefined,
-                        transformOrigin: 'top center',
+                        transformOrigin: 'bottom center',
                       }}
                     >
                       {displayHour}
@@ -392,11 +395,12 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
                   )}
                   {isHalf && (
                     <span
-                      className={`absolute top-6 font-mono font-semibold tabular-nums whitespace-nowrap leading-none opacity-80 ${shift.hourTextClass}`}
+                      data-ruler-label="true"
+                      className={`absolute bottom-[29px] z-[15] font-mono font-semibold tabular-nums whitespace-nowrap leading-none opacity-80 ${shift.hourTextClass}`}
                       style={{
                         fontSize: `${labelBasePx}px`,
                         transform: `scale(${halfLabelScale})`,
-                        transformOrigin: 'top center',
+                        transformOrigin: 'bottom center',
                       }}
                     >
                       {displayHalf}

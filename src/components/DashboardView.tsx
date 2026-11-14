@@ -275,7 +275,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const x1 = (anchorRect.left + anchorRect.width / 2 - containerRect.left) / scale;
       const y1 = (anchorRect.top - containerRect.top) / scale - 1;
       const x2 = (markerRect.left + markerRect.width / 2 - containerRect.left) / scale;
-      const y2 = (markerRect.bottom - containerRect.top) / scale + 1;
+      const y2 = (markerRect.bottom - containerRect.top) / scale + 2;
 
       if (y1 <= y2 + 4) continue;
 
@@ -331,8 +331,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       ...item,
       laneCount,
     }));
-    const desiredExtraSpace = Math.min(64, laneCount * 7 + 10);
-    setBusTopY(rulerBottomY + 2);
+    const maxArrowTipY = Math.max(...withLanes.map((c) => c.y2));
+    const desiredExtraSpace = Math.min(60, laneCount * 7 + 8);
+    setBusTopY(Math.max(rulerBottomY + 2, maxArrowTipY + 12));
     setConnectorTopSpacePx(desiredExtraSpace);
     setFaultConnectors(withLanes);
   }, [todayOpenFaults, settings.pageScale, getConnectorStrokeColor]);
