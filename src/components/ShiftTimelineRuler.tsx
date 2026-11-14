@@ -4,6 +4,7 @@ import { isSameDay, parseDateComponents } from '../utils/faultHelpers';
 
 interface ShiftTimelineRulerProps {
   faults: FaultRecord[];
+  fontSize?: number;
   onSelectFault: (fault: FaultRecord) => void;
 }
 
@@ -144,6 +145,7 @@ function writeShiftCache(shiftKey: string, faults: FaultRecord[]): void {
 
 export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
   faults,
+  fontSize = 11,
   onSelectFault,
 }) => {
   const [now, setNow] = useState<Date>(() => new Date());
@@ -278,10 +280,23 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
     BASE_BOTTOM_OFFSET_PX + maxLanes * LANE_STEP_PX + 2
   );
 
+  const clampedFontPx = Math.max(4, Math.min(24, fontSize));
+  const BASE_LABEL_FONT_PX = 12;
+  const labelBasePx = clampedFontPx < BASE_LABEL_FONT_PX ? BASE_LABEL_FONT_PX : clampedFontPx;
+  const labelScale = clampedFontPx < BASE_LABEL_FONT_PX ? clampedFontPx / BASE_LABEL_FONT_PX : 1;
+  const halfLabelScale = labelScale * 0.85;
+  const pillScale = labelScale * 0.85;
+
+  const bottomPadPx = Math.max(12, Math.round(clampedFontPx * 1.45 + 6));
+  const topPadPx = Math.max(14, Math.round(clampedFontPx * 1.2 + 6));
+
   return (
     <div className="w-full py-0 select-none">
       {/* Horizontal Graduated Colored Ruler for Active 8-Hour Shift (Frameless, Flush Top) */}
-      <div className="relative w-full pt-4 pb-5 px-3 sm:px-2.5">
+      <div
+        className="relative w-full px-3.5 sm:px-4"
+        style={{ paddingTop: `${topPadPx}px`, paddingBottom: `${bottomPadPx}px` }}
+      >
         <div
           ref={trackRef}
           className="relative w-full transition-[height] duration-150"
@@ -311,7 +326,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
               aria-hidden="true"
             />
 
-            {/* Graduated Ruler Tick Marks (every 15 min across 8 hours) */}
+            {/* Graduated Ruler Tick Marks (every 15 min across 8 hours, with hour & half-hour labels) */}
             {Array.from({ length: TOTAL_QUARTERS + 1 }).map((_, idx) => {
               const pct = (idx / TOTAL_QUARTERS) * 100;
               const isHour = idx % 4 === 0;
@@ -319,9 +334,10 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
               const hourVal = shift.startHour + Math.floor(idx / 4);
               const displayHour =
                 hourVal === 24 ? '00:00' : `${String(hourVal).padStart(2, '0')}:00`;
+              const displayHalf = `${String(hourVal).padStart(2, '0')}:30`;
 
-              const tickHeight = isHour ? 'h-6' : isHalf ? 'h-4' : 'h-2.5';
-              const tickWidth = isHour ? 'w-[2px]' : 'w-[1.5px]';
+              const tickHeight = isHour ? 'h-6' : isHalf ? 'h-4.5' : 'h-2.5';
+              const tickWidth = isHour ? 'w-[2px]' : isHalf ? 'w-[1.5px]' : 'w-[1px]';
               const tickColor = isHour ? shift.majorTickBg : shift.minorTickBg;
 
               return (
@@ -333,9 +349,26 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
                   <div className={`${tickWidth} ${tickHeight} ${tickColor} rounded-full`} />
                   {isHour && (
                     <span
-                      className={`absolute top-6 font-mono text-[8px] min-[420px]:text-[9px] sm:text-[11px] font-extrabold tabular-nums whitespace-nowrap ${shift.hourTextClass}`}
+                      className={`absolute top-6 font-mono font-extrabold tabular-nums whitespace-nowrap leading-none ${shift.hourTextClass}`}
+                      style={{
+                        fontSize: `${labelBasePx}px`,
+                        transform: labelScale !== 1 ? `scale(${labelScale})` : undefined,
+                        transformOrigin: 'top center',
+                      }}
                     >
                       {displayHour}
+                    </span>
+                  )}
+                  {isHalf && (
+                    <span
+                      className={`absolute top-6 font-mono font-semibold tabular-nums whitespace-nowrap leading-none opacity-80 ${shift.hourTextClass}`}
+                      style={{
+                        fontSize: `${labelBasePx}px`,
+                        transform: `scale(${halfLabelScale})`,
+                        transformOrigin: 'top center',
+                      }}
+                    >
+                      {displayHalf}
                     </span>
                   )}
                 </div>
@@ -348,7 +381,14 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
             className="absolute top-0 bottom-0 -translate-x-1/2 z-10 pointer-events-none flex flex-col items-center"
             style={{ left: `${currentPercent}%` }}
           >
-            <div className="-mt-3.5 rounded bg-rose-600 px-1.5 py-0.5 font-mono text-[9px] font-extrabold tabular-nums text-white shadow-sm whitespace-nowrap z-30">
+            <div
+              className="-mt-3.5 rounded bg-rose-600 px-1.5 py-0.5 font-mono font-extrabold tabular-nums text-white shadow-sm whitespace-nowrap leading-none z-30"
+              style={{
+                fontSize: `${labelBasePx}px`,
+                transform: `scale(${pillScale})`,
+                transformOrigin: 'bottom center',
+              }}
+            >
               {`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`}
             </div>
             <div className="w-[2px] flex-1 bg-rose-500/80 shadow-[0_0_6px_rgba(244,63,94,0.65)]" />

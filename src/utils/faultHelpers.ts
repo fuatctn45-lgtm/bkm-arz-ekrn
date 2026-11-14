@@ -18,6 +18,7 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   fontWeight: 'normal',
   cardFontSize: 14,
   rowFontSize: 12,
+  rulerFontSize: 11,
   cardOpacity: 1,
   pageScale: 1,
   soundEnabled: true,

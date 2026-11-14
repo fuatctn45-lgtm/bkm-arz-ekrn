@@ -50,6 +50,7 @@ export interface DisplaySettings {
   fontWeight: FontWeightPreset;
   cardFontSize: number;
   rowFontSize: number;
+  rulerFontSize: number;
   cardOpacity: number;
   pageScale: number;
   soundEnabled: boolean;

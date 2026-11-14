@@ -120,6 +120,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     pageScale: 0.6,
                     cardFontSize: 10,
                     rowFontSize: 8.5,
+                    rulerFontSize: 8,
                   }))
                 }
                 className={`rounded-lg border px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
@@ -138,6 +139,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     pageScale: 1,
                     cardFontSize: 14,
                     rowFontSize: 12,
+                    rulerFontSize: 11,
                   }))
                 }
                 className={`rounded-lg border px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
@@ -156,6 +158,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     pageScale: 0.85,
                     cardFontSize: 10,
                     rowFontSize: 9,
+                    rulerFontSize: 8.5,
                   }))
                 }
                 className={`rounded-lg border px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
@@ -346,6 +349,58 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   updateDraft((prev) => ({
                     ...prev,
                     rowFontSize: clampFontSize(parseFloat(e.target.value)),
+                  }))
+                }
+                className="w-full h-6 accent-cyan-500 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                <label htmlFor="ruler-fs-range">Saat Barı Yazı Boyutu (4–24px)</label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        rulerFontSize: clampFontSize(prev.rulerFontSize - 0.5),
+                      }))
+                    }
+                    aria-label="Saat barı yazı boyutunu küçült"
+                    className="flex h-7 w-7 items-center justify-center rounded border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] text-[var(--hub-text)] active:scale-95 cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="min-w-[42px] text-center font-mono tabular-nums text-[var(--hub-text)]">
+                    {draft.rulerFontSize}px
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateDraft((prev) => ({
+                        ...prev,
+                        rulerFontSize: clampFontSize(prev.rulerFontSize + 0.5),
+                      }))
+                    }
+                    aria-label="Saat barı yazı boyutunu büyüt"
+                    className="flex h-7 w-7 items-center justify-center rounded border border-[var(--hub-border)] bg-[var(--hub-surface-alt)] text-[var(--hub-text)] active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+              <input
+                id="ruler-fs-range"
+                type="range"
+                min={MIN_FONT_SIZE}
+                max={MAX_FONT_SIZE}
+                step={0.5}
+                value={draft.rulerFontSize}
+                onChange={(e) =>
+                  updateDraft((prev) => ({
+                    ...prev,
+                    rulerFontSize: clampFontSize(parseFloat(e.target.value)),
                   }))
                 }
                 className="w-full h-6 accent-cyan-500 cursor-pointer"

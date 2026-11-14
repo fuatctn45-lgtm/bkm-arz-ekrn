@@ -22,7 +22,14 @@ function readStoredSettings(): DisplaySettings {
   try {
     const raw = localStorage.getItem('hub-display-settings');
     if (raw) {
-      return { ...DEFAULT_DISPLAY_SETTINGS, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEFAULT_DISPLAY_SETTINGS,
+        ...parsed,
+        cardFontSize: Number.isFinite(parsed.cardFontSize) ? Math.max(4, parsed.cardFontSize) : DEFAULT_DISPLAY_SETTINGS.cardFontSize,
+        rowFontSize: Number.isFinite(parsed.rowFontSize) ? Math.max(4, parsed.rowFontSize) : DEFAULT_DISPLAY_SETTINGS.rowFontSize,
+        rulerFontSize: Number.isFinite(parsed.rulerFontSize) ? Math.max(4, parsed.rulerFontSize) : DEFAULT_DISPLAY_SETTINGS.rulerFontSize,
+      };
     }
     const legacyTheme = (localStorage.getItem('hub-theme') as ThemePreset) || 'dark';
     const legacyCardFs = parseFloat(localStorage.getItem('hub-card-fs') || '14');
@@ -219,6 +226,10 @@ export default function App() {
     setPreviewSettings(nextSettings);
   };
 
+  const handleCloseAlert = useCallback(() => {
+    setAlertFault(null);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[var(--hub-bg)] text-[var(--hub-text)] transition-colors duration-150">
       <main>
@@ -250,7 +261,7 @@ export default function App() {
 
       <NewFaultAlertModal
         fault={alertFault}
-        onClose={() => setAlertFault(null)}
+        onClose={handleCloseAlert}
       />
 
       <OfflineIndicator />

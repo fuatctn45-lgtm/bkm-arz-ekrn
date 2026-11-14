@@ -269,6 +269,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <ShiftTimelineRuler
           faults={allFaults}
+          fontSize={settings.rulerFontSize}
           onSelectFault={setSelectedFault}
         />
       </div>
