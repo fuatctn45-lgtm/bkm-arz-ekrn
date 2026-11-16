@@ -474,6 +474,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             return (
               <g key={id}>
+                {/* Offset cast shadow so bus wires float above the 3D stage */}
+                <g transform="translate(1.5, 3)" opacity={0.42}>
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="#000000"
+                    strokeWidth={2.4}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d={roundedArrowPath}
+                    fill="none"
+                    stroke="#000000"
+                    strokeWidth={2.6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </g>
+
                 {/* Subtle background halo for clean separation over ticks and hour labels */}
                 <path
                   d={linePath}
@@ -499,19 +519,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   d={linePath}
                   fill="none"
                   stroke={color}
-                  strokeWidth={1.8}
+                  strokeWidth={2.1}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeOpacity={0.9}
+                  strokeOpacity={0.95}
                 />
 
-                {/* Rounded anchor dot on open fault card */}
+                {/* Top specular filament highlight for 3D cable look */}
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.34)"
+                  strokeWidth={0.7}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+
+                {/* 3D anchor dot on open fault card */}
                 <circle
                   cx={x1}
                   cy={y1}
-                  r={2.8}
+                  r={3.1}
                   fill={color}
-                  fillOpacity={0.95}
+                  fillOpacity={0.98}
                 />
 
                 {/* Rounded arrowhead pointing to bar indicator */}
@@ -519,16 +549,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   d={roundedArrowPath}
                   fill="none"
                   stroke={color}
-                  strokeWidth={2.1}
+                  strokeWidth={2.2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeOpacity={0.95}
+                  strokeOpacity={0.98}
                 />
               </g>
             );
           })}
         </svg>
       )}
+      {/* 3D Illuminated Active Shift Stage (Ruler + Floating Cables + 3D Open Fault Cards) */}
+      <div
+        className={`flex-1 flex flex-col gap-2 sm:gap-3 rounded-2xl border p-2 sm:p-3 ${
+          isLightTheme(settings.theme) ? 'border-black/10' : 'border-white/10'
+        }`}
+        style={{
+          backgroundImage: isLightTheme(settings.theme)
+            ? 'radial-gradient(ellipse 85% 60% at 50% 0%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.12) 60%, rgba(0,0,0,0.06) 100%)'
+            : 'radial-gradient(ellipse 85% 60% at 50% 0%, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.015) 55%, rgba(0,0,0,0.22) 100%)',
+          boxShadow: isLightTheme(settings.theme)
+            ? 'inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -10px 24px rgba(0,0,0,0.07), 0 8px 20px -8px rgba(0,0,0,0.16)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -12px 28px rgba(0,0,0,0.32), 0 10px 24px -8px rgba(0,0,0,0.45)',
+        }}
+      >
       {/* Flush Shift Timeline Ruler pinned at top */}
       <div>
         <ShiftTimelineRuler
@@ -623,6 +667,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   onClick={() => setSelectedFault(fault)}
                   style={{
                     backgroundColor: `rgba(${fault.typeInfo.bgRgb}, ${settings.cardOpacity})`,
+                    backgroundImage:
+                      'linear-gradient(165deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.06) 44%, rgba(0,0,0,0.12) 100%)',
+                    boxShadow:
+                      'inset 0 1px 0 rgba(255,255,255,0.62), inset 0 -3px 0 rgba(0,0,0,0.24), 0 5px 0 -1px rgba(0,0,0,0.26), 0 12px 22px -6px rgba(0,0,0,0.46)',
                     color: fgColor,
                     borderColor: pillBorder,
                     fontSize: `${effectiveCardFont}px`,
@@ -636,19 +684,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     WebkitTextSizeAdjust: '100%',
                     textSizeAdjust: '100%',
                   }}
-                  className="group relative text-left rounded-lg sm:rounded-xl border shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:brightness-95 cursor-pointer flex flex-col min-w-0"
+                  className="group relative text-left rounded-lg sm:rounded-xl border transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0.5 hover:brightness-105 cursor-pointer flex flex-col min-w-0"
                 >
                   {shiftNumber !== undefined && (
                     <span
                       data-card-anchor-id={fault.id}
                       style={{
                         backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
+                        backgroundImage:
+                          'linear-gradient(145deg, rgba(255,255,255,0.45) 0%, rgba(0,0,0,0.18) 100%)',
                         color: fault.typeInfo.fgHex,
                         borderColor: pillBorder,
-                        boxShadow: '0 0 0 2px var(--hub-bg)',
+                        boxShadow:
+                          'inset 0 1px 1px rgba(255,255,255,0.7), inset 0 -1px 1px rgba(0,0,0,0.25), 0 3px 6px rgba(0,0,0,0.42), 0 0 0 2px var(--hub-bg)',
                         fontSize: '0.84em',
                       }}
-                      className="absolute -top-[0.8em] left-1/2 -translate-x-1/2 z-20 inline-flex h-[1.55em] min-w-[1.55em] items-center justify-center rounded-full border px-[0.35em] font-mono font-black leading-none tabular-nums shadow-sm"
+                      className="absolute -top-[0.8em] left-1/2 -translate-x-1/2 z-20 inline-flex h-[1.55em] min-w-[1.55em] items-center justify-center rounded-full border px-[0.35em] font-mono font-black leading-none tabular-nums"
                     >
                       {shiftNumber}
                     </span>
@@ -667,6 +718,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         fontSize: '0.78em',
                         color: fgColor,
                         borderColor: pillBorder,
+                        boxShadow:
+                          'inset 0 1px 2px rgba(0,0,0,0.16), 0 1px 0 rgba(255,255,255,0.32)',
                         backgroundColor:
                           fault.typeInfo.fgHex === '#ffffff' || lowOpacityDark
                             ? 'rgba(0, 0, 0, 0.22)'
@@ -713,6 +766,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </ScaledBlock>
         )}
       </section>
+      </div>
 
       {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar (anchored to bottom; non-ISG groups fade when mouse is idle, ISG stays 100% bright) */}
       <section

@@ -346,27 +346,34 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
           className="relative w-full transition-[height] duration-150"
           style={{ height: `${trackHeightPx}px` }}
         >
-          {/* Base 28px Ruler Track Anchored at Bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-7">
+          {/* Base 28px Recessed 3D Ruler Track Anchored at Bottom */}
+          <div
+            className="absolute inset-x-0 bottom-0 h-7 rounded-md border border-black/20 dark:border-white/15 overflow-hidden"
+            style={{
+              boxShadow:
+                'inset 0 3px 6px rgba(0,0,0,0.42), inset 0 -1px 0 rgba(255,255,255,0.22), 0 4px 10px rgba(0,0,0,0.26)',
+            }}
+          >
             {/* Colored Active Shift Backdrop */}
             <div
-              className={`absolute inset-y-0.5 inset-x-0 rounded-sm ${shift.backdropClass}`}
+              className={`absolute inset-0 ${shift.backdropClass}`}
               aria-hidden="true"
             />
 
             {/* Live Elapsed Progress Bar */}
             <div
-              className="absolute inset-y-0.5 left-0 rounded-l-sm transition-all duration-1000 pointer-events-none"
+              className="absolute inset-y-0 left-0 rounded-l-md transition-all duration-1000 pointer-events-none"
               style={{
                 width: `${currentPercent}%`,
                 background: shift.progressGradient,
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35)',
               }}
               aria-hidden="true"
             />
 
             {/* Center Horizontal Axis Line */}
             <div
-              className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] ${shift.axisBg}`}
+              className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] shadow-[0_1px_0_rgba(255,255,255,0.28)] ${shift.axisBg}`}
               aria-hidden="true"
             />
 
@@ -439,15 +446,18 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
             style={{ left: `${currentPercent}%` }}
           >
             <div
-              className="rounded-md bg-rose-600 px-2 py-0.5 font-mono font-black tracking-wide tabular-nums text-white shadow-md whitespace-nowrap leading-none z-30"
+              className="rounded-md px-2 py-0.5 font-mono font-black tracking-wide tabular-nums text-white whitespace-nowrap leading-none z-30"
               style={{
                 marginTop: `-${pillPullUpPx}px`,
                 fontSize: `${pillFontPx}px`,
+                background: 'linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%)',
+                boxShadow:
+                  'inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(0,0,0,0.32), 0 4px 10px rgba(225,29,72,0.48)',
               }}
             >
               {`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`}
             </div>
-            <div className="w-[2px] flex-1 bg-rose-500/80 shadow-[0_0_6px_rgba(244,63,94,0.65)]" />
+            <div className="w-[2px] flex-1 bg-rose-500/85 shadow-[0_0_6px_rgba(244,63,94,0.65)]" />
           </div>
 
           {/* Today's Shift Fault Markers (all 100% crisp & visible for shift handover visibility) */}
@@ -473,16 +483,20 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
                   left: `${percent}%`,
                   bottom: `${BASE_BOTTOM_OFFSET_PX + lane * LANE_STEP_PX}px`,
                   backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
+                  backgroundImage:
+                    'linear-gradient(145deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.06) 48%, rgba(0,0,0,0.22) 100%)',
+                  boxShadow:
+                    'inset 0 1px 0 rgba(255,255,255,0.68), inset 0 -2px 0 rgba(0,0,0,0.32), 0 3px 5px rgba(0,0,0,0.42)',
                   color: fault.typeInfo.fgHex,
                 }}
                 title={`#${shiftNumber} · ${timeShort} · ${fault.machine} (${fault.typeInfo.label})${isOpen ? '' : ` [${fault.technician}]`} — ${fault.description}`}
                 aria-label={`#${shiftNumber} ${timeShort} ${fault.machine} (${fault.typeInfo.label}) arıza detayı`}
-                className={`absolute -translate-x-1/2 flex h-4 min-w-[16px] px-[2px] items-center justify-center rounded-[2px] font-mono text-[9.5px] font-black leading-none tabular-nums opacity-100 transition-transform hover:scale-125 hover:z-30 cursor-pointer ${
+                className={`absolute -translate-x-1/2 flex h-4 min-w-[16px] px-[2px] items-center justify-center rounded-[3px] font-mono text-[9.5px] font-black leading-none tabular-nums opacity-100 transition-transform hover:scale-125 hover:z-30 cursor-pointer ${
                   isNewest
-                    ? 'z-[25] scale-110 ring-2 ring-slate-900/80 dark:ring-white/95 shadow-md'
+                    ? 'z-[25] scale-110 ring-2 ring-slate-900/80 dark:ring-white/95'
                     : isOpen
-                      ? 'z-20 shadow-sm ring-1 ring-black/25 dark:ring-white/30'
-                      : 'z-20 shadow-xs ring-1 ring-black/20 dark:ring-white/20'
+                      ? 'z-20 ring-1 ring-black/25 dark:ring-white/30'
+                      : 'z-20 ring-1 ring-black/20 dark:ring-white/20'
                 }`}
               >
                 {shiftNumber}
