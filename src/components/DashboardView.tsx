@@ -81,6 +81,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   >([]);
   const [connectorTopSpacePx, setConnectorTopSpacePx] = useState<number>(0);
   const [busTopY, setBusTopY] = useState<number>(0);
+  const [menuHeightPx, setMenuHeightPx] = useState<number>(54);
 
   const clearHideTimer = useCallback(() => {
     if (hideTimerRef.current !== null) {
@@ -400,20 +401,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   }, [measureConnectors, allFaults, settings.cardFontSize, settings.rulerFontSize]);
 
+  useEffect(() => {
+    const updateMenuHeight = () => {
+      const h = bottomMenuRef.current?.offsetHeight;
+      if (h && h > 0) {
+        setMenuHeightPx(h);
+      }
+    };
+    updateMenuHeight();
+    window.addEventListener('resize', updateMenuHeight);
+    return () => window.removeEventListener('resize', updateMenuHeight);
+  }, [stats, isMenuVisible]);
+
   const minCardTopY =
     faultConnectors.length > 0
       ? Math.min(...faultConnectors.map((c) => c.y1))
       : 0;
+
+  const activePageScale = settings.pageScale > 0 ? settings.pageScale : 1;
 
   return (
     <div className="w-full overflow-x-hidden">
       <ScaledBlock scale={settings.pageScale}>
       <div
         ref={boardContainerRef}
+        style={{
+          minHeight: `calc(${(100 / activePageScale).toFixed(3)}dvh - 4px)`,
+        }}
         className={
           isFullscreen
-            ? 'relative w-full px-1.5 sm:px-3 pt-1 pb-16 space-y-2 sm:space-y-3'
-            : 'relative w-full px-2 sm:px-4 pt-1.5 pb-16 space-y-2 sm:space-y-3'
+            ? 'relative w-full flex flex-col gap-2 sm:gap-3 px-1.5 sm:px-3 pt-1 pb-2 sm:pb-3'
+            : 'relative w-full flex flex-col gap-2 sm:gap-3 px-2 sm:px-4 pt-1.5 pb-2 sm:pb-3'
         }
       >
       {faultConnectors.length > 0 && (
@@ -545,10 +563,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Section 1: Bugünün Açık Arızaları */}
+      {/* Section 1: Bugünün Açık Arızaları (expands into available vertical space for new faults) */}
       <section
         aria-label="Bugünün Açık Arızaları"
-        className="relative z-10"
+        className="relative z-10 flex-1"
         style={
           connectorTopSpacePx > 0
             ? { marginTop: `${connectorTopSpacePx}px` }
@@ -692,10 +710,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </section>
 
-      {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar (faded when mouse is idle, normal when mouse moves) */}
+      {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar (anchored to bottom, faded when mouse is idle) */}
       <section
         aria-labelledby="pending-faults-heading"
-        className={`space-y-2 sm:space-y-3 transition-opacity duration-300 ${
+        className={`mt-auto space-y-2 sm:space-y-3 transition-opacity duration-300 ${
           isMenuVisible ? 'opacity-100' : 'opacity-45'
         }`}
       >
@@ -988,6 +1006,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         )}
       </section>
+      <div
+        aria-hidden="true"
+        className="shrink-0 transition-[height] duration-300 ease-out"
+        style={{
+          height: isMenuVisible
+            ? `${Math.ceil((menuHeightPx + 12) / activePageScale)}px`
+            : '0px',
+        }}
+      />
       </div>
       </ScaledBlock>
 
