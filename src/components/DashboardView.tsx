@@ -630,7 +630,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     padding: `${cardPadPx}px`,
                     gap: `${cardGapPx}px`,
                     width: 'fit-content',
-                    minWidth: '10.5em',
+                    minWidth: '12em',
                     maxWidth: 'min(17em, 100%)',
                     maxHeight: '999999px',
                     WebkitTextSizeAdjust: '100%',
@@ -688,8 +688,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     className="flex items-center justify-between gap-2 w-full min-w-0"
                     style={{ fontSize: '0.76em', color: mutedColor }}
                   >
-                    <span className="font-bold truncate">Bildiren: {fault.reporter}</span>
-                    {fault.shift && <span className="font-bold truncate max-w-[7em]">{fault.shift}</span>}
+                    <span className="font-bold whitespace-nowrap shrink-0">
+                      Bildiren: {fault.reporter === '-' ? 'Girilmemiş' : fault.reporter}
+                    </span>
+                    {fault.shift && (
+                      <span className="font-bold truncate min-w-0 text-right">{fault.shift}</span>
+                    )}
                   </div>
 
                   <p
@@ -710,14 +714,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </section>
 
-      {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar (anchored to bottom, faded when mouse is idle) */}
+      {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar (anchored to bottom; non-ISG groups fade when mouse is idle, ISG stays 100% bright) */}
       <section
         aria-labelledby="pending-faults-heading"
-        className={`mt-auto space-y-2 sm:space-y-3 transition-opacity duration-300 ${
-          isMenuVisible ? 'opacity-100' : 'opacity-45'
-        }`}
+        className="mt-auto space-y-2 sm:space-y-3"
       >
-        <div className="flex items-center justify-between border-b border-[var(--hub-border)] pb-1.5 sm:pb-2">
+        <div
+          className={`flex items-center justify-between border-b border-[var(--hub-border)] pb-1.5 sm:pb-2 transition-opacity duration-300 ${
+            isMenuVisible ? 'opacity-100' : 'opacity-45'
+          }`}
+        >
           <h2
             id="pending-faults-heading"
             className="text-xs sm:text-base font-extrabold tracking-tight text-[var(--hub-text)]"
@@ -730,7 +736,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {isLoading && pendingFaults.length === 0 ? (
-          <div className="space-y-2">
+          <div
+            className={`space-y-2 transition-opacity duration-300 ${
+              isMenuVisible ? 'opacity-100' : 'opacity-45'
+            }`}
+          >
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
@@ -739,7 +749,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             ))}
           </div>
         ) : groupedPending.length === 0 ? (
-          <div className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-6 py-8 text-center">
+          <div
+            className={`rounded-xl border border-[var(--hub-border)] bg-[var(--hub-surface)] px-6 py-8 text-center transition-opacity duration-300 ${
+              isMenuVisible ? 'opacity-100' : 'opacity-45'
+            }`}
+          >
             <p className="text-xs sm:text-sm font-semibold text-[var(--hub-text)]">
               Filtreye uygun geçmiş veya bekleyen kayıt bulunamadı.
             </p>
@@ -748,6 +762,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="space-y-1.5 sm:space-y-2">
             {groupedPending.map((group) => {
               const isCollapsed = !!collapsedGroups[group.category];
+              const isIsgGroup = group.category === 'isg';
               const sampleInfo = group.items[0].typeInfo;
               const lowOpacityDark = settings.cardOpacity < 0.55 && !isLightTheme(settings.theme);
               const headerFg = lowOpacityDark ? '#f8fafc' : sampleInfo.fgHex;
@@ -755,7 +770,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               return (
                 <div
                   key={group.category}
-                  className="overflow-hidden rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface)]"
+                  className={`overflow-hidden rounded-lg border bg-[var(--hub-surface)] transition-opacity duration-300 ${
+                    isIsgGroup
+                      ? 'border-red-500/80 ring-1 ring-red-500/60 opacity-100'
+                      : `border-[var(--hub-border)] ${isMenuVisible ? 'opacity-100' : 'opacity-45'}`
+                  }`}
                 >
                   <button
                     type="button"

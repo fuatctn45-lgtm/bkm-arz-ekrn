@@ -383,7 +383,7 @@ export function shortenName(name?: string): string {
   if (!name || name.trim() === '-' || name.trim() === '') return '-';
   const parts = name.trim().split(/\s+/);
   if (parts.length < 2) return name.trim();
-  return `${parts[0][0].toUpperCase()}.${parts[parts.length - 1]}`;
+  return `${parts[0][0].toLocaleUpperCase('tr-TR')}.${parts[parts.length - 1]}`;
 }
 
 export function parseDateComponents(str: string): { d: number; m: number; y: number } | null {
@@ -544,7 +544,12 @@ export function processDashboardRows(
 
     parsedDrafts.push(draft);
 
-    if (!wasMemoryEmpty && !previousAlertKeys.has(key)) {
+    if (
+      !wasMemoryEmpty &&
+      !previousAlertKeys.has(key) &&
+      draft.isTodayUnassigned &&
+      (!latestAlertCandidate || draft.timestampMs >= latestAlertCandidate.timestampMs)
+    ) {
       latestAlertCandidate = {
         ...draft,
         isRecurring: false,
