@@ -26,6 +26,7 @@ export interface ActiveShiftTimeline {
   now: Date;
   shift: ShiftConfig;
   shiftKey: string;
+  elapsedMin: number;
   currentPercent: number;
   numberedItems: NumberedShiftFaultItem[];
   shiftNumberById: Map<string, number>;
@@ -44,14 +45,40 @@ interface StoredShiftCache {
   faults: FaultRecord[];
 }
 
+interface PlacedMarker {
+  kind: 'single';
+  fault: FaultRecord;
+  shiftNumber: number;
+  timeShort: string;
+  x: number;
+  y: number;
+  percent: number;
+  isOpen: boolean;
+}
+
+interface PlacedCluster {
+  kind: 'cluster';
+  id: string;
+  x: number;
+  y: number;
+  items: NumberedShiftFaultItem[];
+  label: string;
+  bgRgb: string;
+  fgHex: string;
+}
+
+type RulerMarker = PlacedMarker | PlacedCluster;
+
 const SHIFT_CACHE_KEY = 'hub-shift-ruler-cache-v1';
 const SHIFT_HOURS = 8;
+const TOTAL_SHIFT_MIN = SHIFT_HOURS * 60; // 480
 const TOTAL_QUARTERS = SHIFT_HOURS * 4; // 32 quarter-hour ticks (every 15 min)
+
+const BAR_HEIGHT_PX = 38;
+const AXIS_Y_PX = 25;
 const SQUARE_SIZE_PX = 16;
-const MIN_HORIZ_GAP_PX = 18; // 16px square + 2px horizontal clearance
-const LANE_STEP_PX = 17; // 16px square + 1px vertical clearance
-const BASE_BAR_HEIGHT_PX = 28; // h-7
-const BASE_BOTTOM_OFFSET_PX = 6; // centers 16px square vertically inside 28px bar
+const MIN_MARKER_GAP_PX = 18;
+const LANE_STEP_PX = 11;
 
 function getActiveShiftConfig(hour: number): ShiftConfig {
   if (hour >= 8 && hour < 16) {
@@ -60,7 +87,7 @@ function getActiveShiftConfig(hour: number): ShiftConfig {
       startHour: 8,
       endHour: 16,
       backdropClass: 'bg-gradient-to-r from-cyan-500/20 via-sky-400/15 to-cyan-500/25',
-      progressGradient: 'linear-gradient(90deg, rgba(6,182,212,0.32), rgba(14,165,233,0.52))',
+      progressGradient: 'linear-gradient(90deg, rgba(6,182,212,0.34), rgba(14,165,233,0.54))',
       axisBg: 'bg-cyan-500',
       majorTickBg: 'bg-cyan-700 dark:bg-cyan-300',
       minorTickBg: 'bg-cyan-600/75 dark:bg-cyan-400/65',
@@ -74,7 +101,7 @@ function getActiveShiftConfig(hour: number): ShiftConfig {
       startHour: 16,
       endHour: 24,
       backdropClass: 'bg-gradient-to-r from-amber-500/20 via-orange-400/15 to-amber-500/25',
-      progressGradient: 'linear-gradient(90deg, rgba(245,158,11,0.32), rgba(249,115,22,0.52))',
+      progressGradient: 'linear-gradient(90deg, rgba(245,158,11,0.34), rgba(249,115,22,0.54))',
       axisBg: 'bg-amber-500',
       majorTickBg: 'bg-amber-700 dark:bg-amber-300',
       minorTickBg: 'bg-amber-600/75 dark:bg-amber-400/65',
@@ -87,7 +114,7 @@ function getActiveShiftConfig(hour: number): ShiftConfig {
     startHour: 0,
     endHour: 8,
     backdropClass: 'bg-gradient-to-r from-indigo-500/20 via-violet-400/15 to-indigo-500/25',
-    progressGradient: 'linear-gradient(90deg, rgba(99,102,241,0.32), rgba(139,92,246,0.52))',
+    progressGradient: 'linear-gradient(90deg, rgba(99,102,241,0.34), rgba(139,92,246,0.54))',
     axisBg: 'bg-indigo-500',
     majorTickBg: 'bg-indigo-700 dark:bg-indigo-300',
     minorTickBg: 'bg-indigo-600/75 dark:bg-indigo-400/65',
@@ -161,7 +188,6 @@ export function useActiveShiftTimeline(faults: FaultRecord[]): ActiveShiftTimeli
     readShiftCache(shiftKey)
   );
 
-  // Sync live faults from this shift into persistent shift cache until shift handover (vardiya devri)
   useEffect(() => {
     const curNow = new Date();
     const todayComp = {
@@ -179,11 +205,9 @@ export function useActiveShiftTimeline(faults: FaultRecord[]): ActiveShiftTimeli
     const existingForShift = readShiftCache(shiftKey);
     const mergedMap = new Map<string, FaultRecord>();
 
-    // Retain previously recorded faults from this shift even if closed & removed from API
     for (const item of existingForShift) {
       mergedMap.set(item.id, item);
     }
-    // Update / add current live faults from this shift
     for (const item of activeLiveFaults) {
       mergedMap.set(item.id, item);
     }
@@ -195,9 +219,8 @@ export function useActiveShiftTimeline(faults: FaultRecord[]): ActiveShiftTimeli
 
   const currentMinutesOfDay = currentHour * 60 + now.getMinutes() + now.getSeconds() / 60;
   const startMin = shift.startHour * 60;
-  const totalSpanMin = SHIFT_HOURS * 60;
-  const elapsedMin = Math.max(0, Math.min(totalSpanMin, currentMinutesOfDay - startMin));
-  const currentPercent = (elapsedMin / totalSpanMin) * 100;
+  const elapsedMin = Math.max(0, Math.min(TOTAL_SHIFT_MIN, currentMinutesOfDay - startMin));
+  const currentPercent = (elapsedMin / TOTAL_SHIFT_MIN) * 100;
 
   const { numberedItems, shiftNumberById } = useMemo(() => {
     const sorted = cachedShiftFaults
@@ -207,7 +230,7 @@ export function useActiveShiftTimeline(faults: FaultRecord[]): ActiveShiftTimeli
         return {
           fault,
           mins,
-          percent: (mins / totalSpanMin) * 100,
+          percent: (mins / TOTAL_SHIFT_MIN) * 100,
           timeShort: fault.timePart.substring(0, 5),
         };
       })
@@ -228,12 +251,13 @@ export function useActiveShiftTimeline(faults: FaultRecord[]): ActiveShiftTimeli
       numberedItems: items,
       shiftNumberById: map,
     };
-  }, [cachedShiftFaults, shift.startHour, shift.endHour, totalSpanMin]);
+  }, [cachedShiftFaults, shift.startHour, shift.endHour]);
 
   return {
     now,
     shift,
     shiftKey,
+    elapsedMin,
     currentPercent,
     numberedItems,
     shiftNumberById,
@@ -249,14 +273,8 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
 }) => {
   const { now, shift, currentPercent, numberedItems } = timeline;
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const [trackWidthPx, setTrackWidthPx] = useState<number>(1200);
-  const [hoveredMarker, setHoveredMarker] = useState<{
-    fault: FaultRecord;
-    shiftNumber: number;
-    timeShort: string;
-    percent: number;
-    isOpen: boolean;
-  } | null>(null);
+  const [trackWidth, setTrackWidth] = useState<number>(1200);
+  const [hoveredMarker, setHoveredMarker] = useState<RulerMarker | null>(null);
 
   useEffect(() => {
     const el = trackRef.current;
@@ -264,7 +282,7 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
 
     const updateWidth = () => {
       if (el.clientWidth > 0) {
-        setTrackWidthPx(el.clientWidth);
+        setTrackWidth(el.clientWidth);
       }
     };
 
@@ -280,264 +298,331 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
-  const { faultMarkers, maxLanes } = useMemo(() => {
-    const laneLastXPx: number[] = [];
-    const placed = numberedItems.map((item) => {
-      const rawXPx = (item.percent / 100) * trackWidthPx;
-      // Keep edges inside track bounds so first/last squares aren't clipped
-      const clampedXPx = Math.max(
-        SQUARE_SIZE_PX / 2,
-        Math.min(trackWidthPx - SQUARE_SIZE_PX / 2, rawXPx)
-      );
+  // Place open faults first with priority; keep max 2 horizontal lanes on the rail and group overflowing closed items
+  const rulerMarkers = useMemo<RulerMarker[]>(() => {
+    const minX = SQUARE_SIZE_PX / 2 + 4;
+    const maxX = Math.max(minX + 20, trackWidth - SQUARE_SIZE_PX / 2 - 4);
 
-      let assignedLane = 0;
-      while (
-        assignedLane < laneLastXPx.length &&
-        clampedXPx - laneLastXPx[assignedLane] < MIN_HORIZ_GAP_PX
-      ) {
-        assignedLane++;
+    const ordered = [...numberedItems]
+      .map((item) => {
+        const rawX = (item.percent / 100) * trackWidth;
+        const clampedX = Math.max(minX, Math.min(maxX, rawX));
+        const isOpen = openFaultIds ? openFaultIds.has(item.fault.id) : true;
+        return { item, x: clampedX, isOpen };
+      })
+      .sort((a, b) => {
+        if (a.isOpen !== b.isOpen) return a.isOpen ? -1 : 1;
+        return a.x - b.x || a.item.shiftNumber - b.item.shiftNumber;
+      });
+
+    const lanes: Array<Array<{ x: number }>> = [[], []];
+    const singles: PlacedMarker[] = [];
+    const overflowBuckets = new Map<number, { x: number; items: NumberedShiftFaultItem[] }>();
+
+    for (const entry of ordered) {
+      const { item, x, isOpen } = entry;
+      let chosenLane = -1;
+
+      for (let lane = 0; lane < lanes.length; lane++) {
+        const collides = lanes[lane].some((p) => Math.abs(p.x - x) < MIN_MARKER_GAP_PX);
+        if (!collides) {
+          chosenLane = lane;
+          break;
+        }
       }
-      laneLastXPx[assignedLane] = clampedXPx;
 
-      const clampedPercent =
-        trackWidthPx > 0 ? (clampedXPx / trackWidthPx) * 100 : item.percent;
+      if (chosenLane === -1) {
+        if (isOpen) {
+          chosenLane = lanes.length;
+          lanes[chosenLane] = [];
+        } else {
+          const bucketX = Math.round(x / MIN_MARKER_GAP_PX) * MIN_MARKER_GAP_PX;
+          const existing = overflowBuckets.get(bucketX);
+          if (existing) {
+            existing.items.push(item);
+          } else {
+            overflowBuckets.set(bucketX, { x, items: [item] });
+          }
+          continue;
+        }
+      }
 
-      return {
-        ...item,
-        percent: clampedPercent,
-        lane: assignedLane,
-      };
-    });
+      lanes[chosenLane].push({ x });
+      singles.push({
+        kind: 'single',
+        fault: item.fault,
+        shiftNumber: item.shiftNumber,
+        timeShort: item.timeShort,
+        x,
+        y: AXIS_Y_PX + chosenLane * LANE_STEP_PX,
+        percent: item.percent,
+        isOpen,
+      });
+    }
 
-    return {
-      faultMarkers: placed,
-      maxLanes: Math.max(1, laneLastXPx.length),
-    };
-  }, [numberedItems, trackWidthPx]);
+    const clusters: PlacedCluster[] = [];
+    for (const [bucketKey, bucket] of overflowBuckets.entries()) {
+      const sortedItems = [...bucket.items].sort((a, b) => a.shiftNumber - b.shiftNumber);
+      const firstNum = sortedItems[0].shiftNumber;
+      const lastNum = sortedItems[sortedItems.length - 1].shiftNumber;
+      const label = sortedItems.length === 1 ? String(firstNum) : `${firstNum}-${lastNum}`;
+      const lastItem = sortedItems[sortedItems.length - 1];
 
-  const trackHeightPx = Math.max(
-    BASE_BAR_HEIGHT_PX,
-    BASE_BOTTOM_OFFSET_PX + maxLanes * LANE_STEP_PX + 2
-  );
+      clusters.push({
+        kind: 'cluster',
+        id: String(bucketKey),
+        x: Math.min(trackWidth - 26, Math.max(26, bucket.x)),
+        y: AXIS_Y_PX + LANE_STEP_PX * 2 - 2,
+        items: sortedItems,
+        label,
+        bgRgb: lastItem.fault.typeInfo.bgRgb,
+        fgHex: lastItem.fault.typeInfo.fgHex,
+      });
+    }
 
-  const clampedFontPx = Math.max(4, Math.min(24, fontSize));
-  const BASE_LABEL_FONT_PX = 12;
+    return [...singles, ...clusters];
+  }, [numberedItems, openFaultIds, trackWidth]);
+
+  const clampedFontPx = Math.max(4, Math.min(14, fontSize));
+  const BASE_LABEL_FONT_PX = 11;
   const labelBasePx = clampedFontPx < BASE_LABEL_FONT_PX ? BASE_LABEL_FONT_PX : clampedFontPx;
   const labelScale = clampedFontPx < BASE_LABEL_FONT_PX ? clampedFontPx / BASE_LABEL_FONT_PX : 1;
   const halfLabelScale = labelScale * 0.85;
 
-  const pillFontPx = Math.min(28, Math.max(13, Math.round(clampedFontPx * 1.5)));
-  const pillBoxHeightPx = Math.ceil(pillFontPx * 1.15 + 6);
-  const labelsTopAboveTrackPx = Math.max(0, 29 + Math.ceil(clampedFontPx) - trackHeightPx + 3);
-  const pillPullUpPx = labelsTopAboveTrackPx + pillBoxHeightPx + 4;
-
-  const bottomPadPx = 4;
-  const topPadPx = pillPullUpPx + 5;
+  const pillFontPx = Math.min(17, Math.max(12, Math.round(clampedFontPx * 1.25)));
+  const liveClockStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const liveNeedleX = (Math.max(0, Math.min(100, currentPercent)) / 100) * trackWidth;
+  const clampedLivePillX = Math.max(28, Math.min(trackWidth - 28, liveNeedleX));
 
   return (
-    <div data-ruler-root="true" className="w-full py-0 select-none">
-      {/* Horizontal Graduated Colored Ruler for Active 8-Hour Shift (Frameless, Flush Top) */}
+    <div data-ruler-root="true" className="w-full select-none">
+      {/* Flush Full-Width 3D Horizontal Single-Shift Bar (Pinned at 0px Top Edge) */}
       <div
-        className="relative w-full px-3.5 sm:px-4"
-        style={{ paddingTop: `${topPadPx}px`, paddingBottom: `${bottomPadPx}px` }}
+        ref={trackRef}
+        className="relative w-full border-b border-black/20 dark:border-white/15"
+        style={{
+          height: `${BAR_HEIGHT_PX}px`,
+          boxShadow:
+            'inset 0 2px 5px rgba(0,0,0,0.38), inset 0 -1px 0 rgba(255,255,255,0.22), 0 4px 10px rgba(0,0,0,0.24)',
+        }}
       >
-        <div
-          ref={trackRef}
-          className="relative w-full transition-[height] duration-150"
-          style={{ height: `${trackHeightPx}px` }}
-        >
-          {/* Base 28px Recessed 3D Ruler Track Anchored at Bottom */}
+        {/* Clipped 3D Track Background + Elapsed Progress */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className={`absolute inset-0 ${shift.backdropClass}`} />
           <div
-            className="absolute inset-x-0 bottom-0 h-7 rounded-md border border-black/20 dark:border-white/15"
+            className="absolute inset-y-0 left-0 transition-all duration-1000"
             style={{
-              boxShadow:
-                'inset 0 3px 6px rgba(0,0,0,0.42), inset 0 -1px 0 rgba(255,255,255,0.22), 0 4px 10px rgba(0,0,0,0.26)',
+              width: `${currentPercent}%`,
+              background: shift.progressGradient,
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.32)',
             }}
-          >
-            <div
-              className="absolute inset-0 rounded-md overflow-hidden pointer-events-none"
-              aria-hidden="true"
-            >
-              {/* Colored Active Shift Backdrop */}
-              <div className={`absolute inset-0 ${shift.backdropClass}`} />
-
-              {/* Live Elapsed Progress Bar */}
-              <div
-                className="absolute inset-y-0 left-0 transition-all duration-1000"
-                style={{
-                  width: `${currentPercent}%`,
-                  background: shift.progressGradient,
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35)',
-                }}
-              />
-
-              {/* Center Horizontal Axis Line */}
-              <div
-                className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] shadow-[0_1px_0_rgba(255,255,255,0.28)] ${shift.axisBg}`}
-              />
-            </div>
-
-            {/* Graduated Ruler Tick Marks (every 15 min across 8 hours, with hour & half-hour labels) */}
-            {Array.from({ length: TOTAL_QUARTERS + 1 }).map((_, idx) => {
-              const pct = (idx / TOTAL_QUARTERS) * 100;
-              const isHour = idx % 4 === 0;
-              const isHalf = idx % 4 === 2;
-              const hourVal = shift.startHour + Math.floor(idx / 4);
-              const displayHour =
-                hourVal === 24 ? '00:00' : `${String(hourVal).padStart(2, '0')}:00`;
-              const displayHalf = `${String(hourVal).padStart(2, '0')}:30`;
-
-              const tickHeight = isHour ? 'h-6' : isHalf ? 'h-4.5' : 'h-2.5';
-              const tickWidth = isHour ? 'w-[2px]' : isHalf ? 'w-[1.5px]' : 'w-[1px]';
-              const tickColor = isHour ? shift.majorTickBg : shift.minorTickBg;
-
-              return (
-                <div
-                  key={idx}
-                  className="absolute inset-y-0 -translate-x-1/2 flex flex-col items-center justify-center"
-                  style={{ left: `${pct}%` }}
-                >
-                  <div className={`${tickWidth} ${tickHeight} ${tickColor} rounded-full`} />
-                  {isHour && (
-                    <span
-                      data-ruler-label="true"
-                      className={`absolute bottom-[29px] z-[15] font-mono font-extrabold tabular-nums whitespace-nowrap leading-none ${
-                        idx === 0
-                          ? 'left-1/2 translate-x-0'
-                          : idx === TOTAL_QUARTERS
-                            ? 'right-1/2 translate-x-0'
-                            : ''
-                      } ${shift.hourTextClass}`}
-                      style={{
-                        fontSize: `${labelBasePx}px`,
-                        transform: labelScale !== 1 ? `scale(${labelScale})` : undefined,
-                        transformOrigin:
-                          idx === 0
-                            ? 'bottom left'
-                            : idx === TOTAL_QUARTERS
-                              ? 'bottom right'
-                              : 'bottom center',
-                      }}
-                    >
-                      {displayHour}
-                    </span>
-                  )}
-                  {isHalf && (
-                    <span
-                      data-ruler-label="true"
-                      className={`absolute bottom-[29px] z-[15] font-mono font-semibold tabular-nums whitespace-nowrap leading-none opacity-80 ${shift.hourTextClass}`}
-                      style={{
-                        fontSize: `${labelBasePx}px`,
-                        transform: `scale(${halfLabelScale})`,
-                        transformOrigin: 'bottom center',
-                      }}
-                    >
-                      {displayHalf}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Current Time Indicator Needle (behind squares, badge above stack) */}
+          />
           <div
-            className="absolute top-0 bottom-0 -translate-x-1/2 z-10 pointer-events-none flex flex-col items-center"
-            style={{ left: `${currentPercent}%` }}
-          >
+            className={`absolute left-0 right-0 h-[2px] shadow-[0_1px_0_rgba(255,255,255,0.28)] ${shift.axisBg}`}
+            style={{ top: `${AXIS_Y_PX - 1}px` }}
+          />
+        </div>
+
+        {/* Graduated 15-min Ticks & Top-Band Hour Labels (Flush inside top rail) */}
+        {Array.from({ length: TOTAL_QUARTERS + 1 }).map((_, idx) => {
+          const percent = (idx / TOTAL_QUARTERS) * 100;
+          const isHour = idx % 4 === 0;
+          const isHalf = idx % 4 === 2;
+          const isStart = idx === 0;
+          const isEnd = idx === TOTAL_QUARTERS;
+
+          const hourVal = shift.startHour + Math.floor(idx / 4);
+          const displayHour =
+            hourVal === 24 ? '00:00' : `${String(hourVal).padStart(2, '0')}:00`;
+          const displayHalf = `${String(hourVal).padStart(2, '0')}:30`;
+
+          const tickHeight = isHour ? 'h-3.5' : isHalf ? 'h-2.5' : 'h-1.5';
+          const tickWidth = isHour ? 'w-[2px]' : isHalf ? 'w-[1.5px]' : 'w-[1px]';
+          const tickColor = isHour ? shift.majorTickBg : shift.minorTickBg;
+
+          return (
             <div
-              className="rounded-md px-2 py-0.5 font-mono font-black tracking-wide tabular-nums text-white whitespace-nowrap leading-none z-30"
-              style={{
-                marginTop: `-${pillPullUpPx}px`,
-                fontSize: `${pillFontPx}px`,
-                background: 'linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%)',
-                boxShadow:
-                  'inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(0,0,0,0.32), 0 4px 10px rgba(225,29,72,0.48)',
-              }}
+              key={idx}
+              className={`pointer-events-none absolute top-0 bottom-0 flex flex-col z-[15] ${
+                isStart
+                  ? 'items-start'
+                  : isEnd
+                    ? 'items-end -translate-x-full'
+                    : 'items-center -translate-x-1/2'
+              }`}
+              style={{ left: `${percent}%` }}
             >
-              {`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`}
+              {(isHour || isHalf) && (
+                <span
+                  data-ruler-label="true"
+                  className={`mt-[3px] font-mono tabular-nums whitespace-nowrap leading-none ${
+                    isStart ? 'pl-1.5' : isEnd ? 'pr-1.5' : ''
+                  } ${
+                    isHour ? 'font-extrabold' : 'font-semibold opacity-80'
+                  } ${shift.hourTextClass}`}
+                  style={{
+                    fontSize: `${labelBasePx}px`,
+                    transform: `scale(${isHour ? labelScale : halfLabelScale})`,
+                    transformOrigin: isStart
+                      ? 'left top'
+                      : isEnd
+                        ? 'right top'
+                        : 'center top',
+                  }}
+                >
+                  {isHour ? displayHour : displayHalf}
+                </span>
+              )}
+              <div
+                className={`absolute -translate-y-1/2 ${tickWidth} ${tickHeight} ${tickColor} rounded-full`}
+                style={{ top: `${AXIS_Y_PX}px` }}
+              />
             </div>
-            <div className="w-[2px] flex-1 bg-rose-500/85 shadow-[0_0_6px_rgba(244,63,94,0.65)]" />
-          </div>
+          );
+        })}
 
-          {/* Today's Shift Fault Markers (all 100% crisp & visible for shift handover visibility) */}
-          {faultMarkers.map(({ fault, percent, timeShort, shiftNumber, lane }) => {
-            const isOpen = openFaultIds ? openFaultIds.has(fault.id) : true;
-            const isNewest = newestFaultId === fault.id;
+        {/* Live Time Vertical Needle */}
+        <div
+          className="pointer-events-none absolute top-0 bottom-0 -translate-x-1/2 z-[28]"
+          style={{ left: `${liveNeedleX}px` }}
+        >
+          <div className="w-[2px] h-full bg-rose-500/95 shadow-[0_0_8px_rgba(244,63,94,0.75)]" />
+        </div>
 
+        {/* Centered 3D Red Live Clock Pill (clamped safely inside rail, never clipped) */}
+        <div
+          className="pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 rounded px-1.5 py-[2px] font-mono font-black tracking-wide tabular-nums text-white whitespace-nowrap leading-none"
+          style={{
+            left: `${clampedLivePillX}px`,
+            fontSize: `${pillFontPx}px`,
+            background: 'linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%)',
+            boxShadow:
+              'inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(0,0,0,0.32), 0 3px 8px rgba(225,29,72,0.5)',
+          }}
+        >
+          {liveClockStr}
+        </div>
+
+        {/* Numbered Fault Markers & Overflow Cluster Chips */}
+        {rulerMarkers.map((marker) => {
+          if (marker.kind === 'cluster') {
             return (
               <button
-                key={fault.id}
+                key={`cluster-${marker.id}`}
                 type="button"
-                data-ruler-fault-id={fault.id}
-                onClick={() => onSelectFault(fault)}
-                onMouseEnter={() =>
-                  setHoveredMarker({ fault, shiftNumber, timeShort, percent, isOpen })
-                }
+                onClick={() => onSelectFault(marker.items[marker.items.length - 1].fault)}
+                onMouseEnter={() => setHoveredMarker(marker)}
                 onMouseLeave={() => setHoveredMarker(null)}
-                onFocus={() =>
-                  setHoveredMarker({ fault, shiftNumber, timeShort, percent, isOpen })
-                }
+                onFocus={() => setHoveredMarker(marker)}
                 onBlur={() => setHoveredMarker(null)}
                 style={{
-                  left: `${percent}%`,
-                  bottom: `${BASE_BOTTOM_OFFSET_PX + lane * LANE_STEP_PX}px`,
-                  backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
+                  left: `${marker.x}px`,
+                  top: `${marker.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: `rgb(${marker.bgRgb})`,
                   backgroundImage:
                     'linear-gradient(145deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.06) 48%, rgba(0,0,0,0.22) 100%)',
                   boxShadow:
                     'inset 0 1px 0 rgba(255,255,255,0.68), inset 0 -2px 0 rgba(0,0,0,0.32), 0 3px 5px rgba(0,0,0,0.42)',
-                  color: fault.typeInfo.fgHex,
+                  color: marker.fgHex,
                 }}
-                title={`#${shiftNumber} · ${timeShort} · ${fault.machine} (${fault.typeInfo.label})${isOpen ? '' : ` [${fault.technician}]`} — ${fault.description}`}
-                aria-label={`#${shiftNumber} ${timeShort} ${fault.machine} (${fault.typeInfo.label}) arıza detayı`}
-                className={`absolute -translate-x-1/2 flex h-4 min-w-[16px] px-[2px] items-center justify-center rounded-[3px] font-mono text-[9.5px] font-black leading-none tabular-nums opacity-100 transition-transform hover:scale-125 hover:z-30 cursor-pointer ${
-                  isNewest
-                    ? 'z-[25] scale-110 ring-2 ring-slate-900/80 dark:ring-white/95'
-                    : isOpen
-                      ? 'z-20 ring-1 ring-black/25 dark:ring-white/30'
-                      : 'z-20 ring-1 ring-black/20 dark:ring-white/20'
-                }`}
+                title={`${marker.items.length} kayıt (#${marker.label})`}
+                aria-label={`${marker.items.length} kayıt (#${marker.label})`}
+                className="absolute z-20 flex h-4 px-1.5 items-center justify-center rounded-full font-mono text-[9px] font-black leading-none tabular-nums ring-1 ring-black/25 dark:ring-white/30 transition-transform hover:scale-115 hover:z-40 cursor-pointer whitespace-nowrap"
               >
-                {shiftNumber}
+                {marker.label}
               </button>
             );
-          })}
+          }
 
-          {hoveredMarker && (
-            <div
-              role="tooltip"
-              className="pointer-events-none absolute bottom-full mb-2 z-40 max-w-[280px] rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface)] px-2.5 py-1.5 text-[11px] text-[var(--hub-text)] shadow-xl"
+          const { fault, x, y, timeShort, shiftNumber, isOpen } = marker;
+          const isNewest = newestFaultId === fault.id;
+
+          return (
+            <button
+              key={fault.id}
+              type="button"
+              data-ruler-fault-id={fault.id}
+              onClick={() => onSelectFault(fault)}
+              onMouseEnter={() => setHoveredMarker(marker)}
+              onMouseLeave={() => setHoveredMarker(null)}
+              onFocus={() => setHoveredMarker(marker)}
+              onBlur={() => setHoveredMarker(null)}
               style={{
-                left: `${Math.max(12, Math.min(88, hoveredMarker.percent))}%`,
-                transform: 'translateX(-50%)',
+                left: `${x - SQUARE_SIZE_PX / 2}px`,
+                top: `${y - SQUARE_SIZE_PX / 2}px`,
+                backgroundColor: `rgb(${fault.typeInfo.bgRgb})`,
+                backgroundImage:
+                  'linear-gradient(145deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.06) 48%, rgba(0,0,0,0.22) 100%)',
+                boxShadow:
+                  'inset 0 1px 0 rgba(255,255,255,0.68), inset 0 -2px 0 rgba(0,0,0,0.32), 0 3px 5px rgba(0,0,0,0.42)',
+                color: fault.typeInfo.fgHex,
               }}
+              title={`#${shiftNumber} · ${timeShort} · ${fault.machine} (${fault.typeInfo.label})${isOpen ? '' : ` [${fault.technician}]`} — ${fault.description}`}
+              aria-label={`#${shiftNumber} ${timeShort} ${fault.machine} (${fault.typeInfo.label}) arıza detayı`}
+              className={`absolute flex h-4 min-w-[16px] px-[2px] items-center justify-center rounded-[3px] font-mono text-[9.5px] font-black leading-none tabular-nums opacity-100 transition-transform hover:scale-125 hover:z-40 cursor-pointer ${
+                isNewest
+                  ? 'z-[25] scale-110 ring-2 ring-slate-900/80 dark:ring-white/95'
+                  : isOpen
+                    ? 'z-20 ring-1 ring-black/25 dark:ring-white/30'
+                    : 'z-20 ring-1 ring-black/20 dark:ring-white/20'
+              }`}
             >
-              <div className="flex items-center justify-between gap-2 font-extrabold">
-                <span className="truncate">
-                  #{hoveredMarker.shiftNumber} · {hoveredMarker.fault.machine}
-                </span>
-                <span className="font-mono text-[10px] text-[var(--hub-text-muted)] shrink-0">
-                  {hoveredMarker.timeShort}
-                </span>
+              {shiftNumber}
+            </button>
+          );
+        })}
+
+        {/* Hover / Focus Tooltip */}
+        {hoveredMarker && (
+          <div
+            role="tooltip"
+            className="pointer-events-none absolute top-full mt-2 z-50 w-max max-w-[290px] -translate-x-1/2 rounded-lg border border-[var(--hub-border)] bg-[var(--hub-surface)] px-2.5 py-1.5 text-[11px] text-[var(--hub-text)] shadow-xl"
+            style={{
+              left: `${Math.max(120, Math.min(trackWidth - 120, hoveredMarker.x))}px`,
+            }}
+          >
+            {hoveredMarker.kind === 'cluster' ? (
+              <div>
+                <div className="font-extrabold">
+                  #{hoveredMarker.label} · {hoveredMarker.items.length} Kayıt ({hoveredMarker.items[0].timeShort})
+                </div>
+                <div className="mt-0.5 space-y-0.5 text-[10px] text-[var(--hub-text-muted)]">
+                  {hoveredMarker.items.slice(0, 4).map((it) => (
+                    <div key={it.fault.id} className="truncate">
+                      #{it.shiftNumber} · {it.fault.machine} ({it.fault.technician})
+                    </div>
+                  ))}
+                  {hoveredMarker.items.length > 4 && (
+                    <div className="font-semibold">
+                      +{hoveredMarker.items.length - 4} diğer kayıt
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="mt-0.5 line-clamp-2 text-[10px] text-[var(--hub-text)]">
-                {hoveredMarker.fault.description}
-              </div>
-              <div className="mt-0.5 text-[10px] font-semibold text-[var(--hub-text-muted)] truncate">
-                {hoveredMarker.isOpen
-                  ? 'Açık (Personel Bekliyor)'
-                  : `Görevli: ${hoveredMarker.fault.technician}`}
-              </div>
-            </div>
-          )}
-        </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-2 font-extrabold">
+                  <span className="truncate">
+                    #{hoveredMarker.shiftNumber} · {hoveredMarker.fault.machine}
+                  </span>
+                  <span className="font-mono text-[10px] text-[var(--hub-text-muted)] shrink-0">
+                    {hoveredMarker.timeShort}
+                  </span>
+                </div>
+                <div className="mt-0.5 line-clamp-2 text-[10px] text-[var(--hub-text)]">
+                  {hoveredMarker.fault.description}
+                </div>
+                <div className="mt-0.5 text-[10px] font-semibold text-[var(--hub-text-muted)] truncate">
+                  {hoveredMarker.isOpen
+                    ? 'Açık (Personel Bekliyor)'
+                    : `Görevli: ${hoveredMarker.fault.technician}`}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 };
-
-
-
-
-

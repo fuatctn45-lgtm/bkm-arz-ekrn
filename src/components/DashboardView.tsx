@@ -330,12 +330,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       return;
     }
 
-    // Sort shortest horizontal spans first so inner traces stay closest to cards and outer traces arc cleanly above
     const orderedItems = [...rawItems].sort(
       (a, b) => Math.abs(a.x2 - a.x1) - Math.abs(b.x2 - b.x1)
     );
 
-    // Assign non-overlapping horizontal bus lanes so parallel lines stay cleanly separated
     const laneIntervals: Array<Array<{ minX: number; maxX: number }>> = [];
     const assignedItems = orderedItems.map((item) => {
       const spanMin = Math.min(item.x1, item.x2) - 10;
@@ -426,13 +424,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div
         ref={boardContainerRef}
         style={{
-          minHeight: `calc(${(100 / activePageScale).toFixed(3)}dvh - 4px)`,
+          minHeight: `calc(${(100 / activePageScale).toFixed(3)}dvh)`,
         }}
-        className={
-          isFullscreen
-            ? 'relative w-full flex flex-col gap-2 sm:gap-3 px-1.5 sm:px-3 pt-1 pb-2 sm:pb-3'
-            : 'relative w-full flex flex-col gap-2 sm:gap-3 px-2 sm:px-4 pt-1.5 pb-2 sm:pb-3'
-        }
+        className="relative w-full flex flex-col gap-2 sm:gap-3 px-0 pt-0 pb-2 sm:pb-3"
       >
       {faultConnectors.length > 0 && (
         <svg
@@ -444,7 +438,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             const absDx = Math.abs(dx);
             const laneTopBound = Math.max(y2 + 12, busTopY);
             const laneBottomBound = Math.max(laneTopBound + 4, minCardTopY - 6);
-            // Invert lane vertically: lane 0 (shortest span) sits lowest near cards, outer spans arc higher above
             const visualStep = laneCount - 1 - lane;
             const rawLaneY = laneTopBound + visualStep * 7;
             const yLane = Math.min(laneBottomBound, rawLaneY);
@@ -559,12 +552,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           })}
         </svg>
       )}
-      {/* 3D Illuminated Active Shift Stage (Ruler + Floating Cables + 3D Open Fault Cards) */}
+      {/* Flush Horizontal Shift Timeline Ruler pinned at 0px Top Edge */}
+      <ShiftTimelineRuler
+        timeline={timeline}
+        fontSize={settings.rulerFontSize}
+        openFaultIds={openFaultIdSet}
+        newestFaultId={newestOpenFaultId}
+        onSelectFault={setSelectedFault}
+      />
+
+      {/* 3D Illuminated Active Shift Stage (Floating Cables + 3D Open Fault Cards) */}
       <div
         className={`flex-1 flex flex-col gap-2 sm:gap-3 rounded-2xl border p-2 sm:p-3 ${
+          isFullscreen ? 'mx-1.5 sm:mx-3' : 'mx-2 sm:mx-4'
+        } ${
           isLightTheme(settings.theme) ? 'border-black/10' : 'border-white/10'
         }`}
         style={{
+          marginTop: connectorTopSpacePx > 0 ? `${connectorTopSpacePx}px` : undefined,
           backgroundImage: isLightTheme(settings.theme)
             ? 'radial-gradient(ellipse 85% 60% at 50% 0%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.12) 60%, rgba(0,0,0,0.06) 100%)'
             : 'radial-gradient(ellipse 85% 60% at 50% 0%, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.015) 55%, rgba(0,0,0,0.22) 100%)',
@@ -573,50 +578,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             : 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -12px 28px rgba(0,0,0,0.32), 0 10px 24px -8px rgba(0,0,0,0.45)',
         }}
       >
-      {/* Flush Shift Timeline Ruler pinned at top */}
-      <div>
-        <ShiftTimelineRuler
-          timeline={timeline}
-          fontSize={settings.rulerFontSize}
-          openFaultIds={openFaultIdSet}
-          newestFaultId={newestOpenFaultId}
-          onSelectFault={setSelectedFault}
-        />
-      </div>
-
-      {/* Error State */}
-      {error && (
-        <div
-          role="alert"
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-500/50 bg-red-500/10 p-3 sm:p-4 text-xs sm:text-sm text-red-600 dark:text-red-300"
-        >
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
-              <p className="font-bold">Veri bağlantısı başarısız oldu</p>
-              <p className="text-xs opacity-90 mt-0.5">{error}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onRefresh}
-            className="rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-500 whitespace-nowrap shrink-0 cursor-pointer"
+        {/* Error State */}
+        {error && (
+          <div
+            role="alert"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-500/50 bg-red-500/10 p-3 sm:p-4 text-xs sm:text-sm text-red-600 dark:text-red-300"
           >
-            Tekrar Dene
-          </button>
-        </div>
-      )}
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
+              <div>
+                <p className="font-bold">Veri bağlantısı başarısız oldu</p>
+                <p className="text-xs opacity-90 mt-0.5">{error}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-500 whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              Tekrar Dene
+            </button>
+          </div>
+        )}
 
-      {/* Section 1: Bugünün Açık Arızaları (expands into available vertical space for new faults) */}
-      <section
-        aria-label="Bugünün Açık Arızaları"
-        className="relative z-10 flex-1"
-        style={
-          connectorTopSpacePx > 0
-            ? { marginTop: `${connectorTopSpacePx}px` }
-            : undefined
-        }
-      >
+        {/* Section 1: Bugünün Açık Arızaları (expands into available vertical space for new faults) */}
+        <section
+          aria-label="Bugünün Açık Arızaları"
+          className="relative z-10 flex-1"
+        >
         {isLoading && todayOpenFaults.length === 0 ? (
           <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -765,13 +754,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           </ScaledBlock>
         )}
-      </section>
+        </section>
       </div>
 
       {/* Section 2: Eski Bekleyen ve Geçmiş Kayıtlar (anchored to bottom; non-ISG groups fade when mouse is idle, ISG stays 100% bright) */}
       <section
         aria-labelledby="pending-faults-heading"
-        className="mt-auto space-y-2 sm:space-y-3"
+        className={`mt-auto space-y-2 sm:space-y-3 ${
+          isFullscreen ? 'px-1.5 sm:px-3' : 'px-2 sm:px-4'
+        }`}
       >
         <div
           className={`flex items-center justify-between border-b border-[var(--hub-border)] pb-1.5 sm:pb-2 transition-opacity duration-300 ${
