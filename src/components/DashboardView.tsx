@@ -12,6 +12,7 @@ import {
   Settings,
   ShieldAlert,
   Sliders,
+  User,
   Wrench,
   X,
 } from 'lucide-react';
@@ -174,6 +175,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       items: pendingFaults.filter((item) => item.typeInfo.category === group.category),
     })).filter((group) => group.items.length > 0);
   }, [pendingFaults]);
+
+  const groupPlannedByTechnician = useCallback((items: FaultRecord[]) => {
+    const map = new Map<string, FaultRecord[]>();
+    for (const item of items) {
+      const techName = item.technician.trim() || 'Personel Atanmadı';
+      const existing = map.get(techName);
+      if (existing) {
+        existing.push(item);
+      } else {
+        map.set(techName, [item]);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([technician, techItems]) => ({
+        technician,
+        isUnassigned: technician === 'Personel Atanmadı',
+        items: techItems,
+      }))
+      .sort((a, b) => {
+        if (a.isUnassigned !== b.isUnassigned) return a.isUnassigned ? -1 : 1;
+        return a.technician.localeCompare(b.technician, 'tr');
+      });
+  }, []);
 
   const openFaultIdSet = useMemo(
     () => new Set(todayOpenFaults.map((f) => f.id)),
@@ -739,7 +763,122 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                   </button>
 
-                  {!isCollapsed && (
+                  {!isCollapsed && group.category === 'planli' && (
+                    <ScaledBlock scale={rowScale}>
+                      <div
+                        className="w-full divide-y divide-[var(--hub-border)]"
+                        style={{
+                          fontSize: `${effectiveRowFont}px`,
+                          lineHeight: 1.2,
+                          WebkitTextSizeAdjust: '100%',
+                          textSizeAdjust: '100%',
+                          maxHeight: '999999px',
+                        }}
+                      >
+                        {groupPlannedByTechnician(group.items).map((techGroup) => {
+                          const rem3 = techGroup.items.length % 3;
+                          const fillerCountMd = rem3 === 0 ? 0 : 3 - rem3;
+                          const hasOddSm = techGroup.items.length % 2 === 1;
+
+                          return (
+                            <div key={techGroup.technician} className="w-full">
+                              <div
+                                className="flex items-center justify-between gap-2 border-b border-[var(--hub-border)] bg-[var(--hub-surface-alt)] px-2 sm:px-3 py-1 font-bold uppercase tracking-wider text-[var(--hub-text)]"
+                                style={{ fontSize: '0.88em' }}
+                              >
+                                <span className="inline-flex items-center gap-1.5 min-w-0 truncate">
+                                  <User className="w-[1em] h-[1em] shrink-0 text-orange-500" aria-hidden="true" />
+                                  <span className="truncate">{techGroup.technician}</span>
+                                </span>
+                                <span className="font-mono text-[0.95em] font-extrabold tabular-nums text-[var(--hub-text-muted)] shrink-0">
+                                  {techGroup.items.length} kayıt
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-[1px] bg-black/20 dark:bg-white/15">
+                                {techGroup.items.map((item, idx) => {
+                                  const rowFg = lowOpacityDark ? '#f8fafc' : item.typeInfo.fgHex;
+                                  const rowMuted = lowOpacityDark
+                                    ? 'rgba(248, 250, 252, 0.85)'
+                                    : item.typeInfo.mutedFgHex;
+                                  const rowNum = idx + 1;
+
+                                  return (
+                                    <button
+                                      key={item.id}
+                                      type="button"
+                                      onClick={() => setSelectedFault(item)}
+                                      title={`${rowNum}. ${item.datePart} ${item.timePart} · ${item.machine} · ${item.description} (${item.technician})`}
+                                      style={{
+                                        backgroundColor: `rgba(${item.typeInfo.bgRgb}, ${settings.cardOpacity})`,
+                                        color: rowFg,
+                                        fontSize: `${effectiveRowFont}px`,
+                                        lineHeight: 1.2,
+                                        paddingTop: `${rowPadY}px`,
+                                        paddingBottom: `${rowPadY}px`,
+                                        maxHeight: '999999px',
+                                        WebkitTextSizeAdjust: '100%',
+                                        textSizeAdjust: '100%',
+                                      }}
+                                      className="flex w-full items-center gap-1.5 px-2 text-left transition-all hover:brightness-95 cursor-pointer min-w-0"
+                                    >
+                                      <span
+                                        className="font-mono font-black tabular-nums whitespace-nowrap shrink-0 leading-none"
+                                        style={{ fontSize: '1.3em', fontWeight: 900 }}
+                                      >
+                                        {rowNum}.
+                                      </span>
+                                      <span
+                                        className="font-mono font-bold tabular-nums whitespace-nowrap shrink-0"
+                                        style={{ color: rowMuted }}
+                                      >
+                                        <span className="lg:hidden">
+                                          {item.datePart.slice(0, 5)}
+                                        </span>
+                                        <span className="hidden lg:inline">
+                                          {item.datePart}
+                                        </span>
+                                      </span>
+                                      <span className="font-bold whitespace-nowrap shrink-0 opacity-90">
+                                        {item.reporter}
+                                      </span>
+                                      <span className="font-extrabold whitespace-nowrap shrink-0 max-w-[32%] truncate">
+                                        {item.machine}
+                                        {item.isRecurring && (
+                                          <span className="ml-1 font-mono text-[0.85em] font-extrabold opacity-80">
+                                            ({item.machineFaultCount}x)
+                                          </span>
+                                        )}
+                                      </span>
+                                      <span className="font-extrabold underline underline-offset-2 min-w-0 flex-1 truncate">
+                                        {item.description}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+
+                                {hasOddSm && (
+                                  <div
+                                    aria-hidden="true"
+                                    className="hidden sm:block md:hidden bg-[var(--hub-surface)]"
+                                  />
+                                )}
+                                {Array.from({ length: fillerCountMd }).map((_, fIdx) => (
+                                  <div
+                                    key={`filler-${fIdx}`}
+                                    aria-hidden="true"
+                                    className="hidden md:block bg-[var(--hub-surface)]"
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </ScaledBlock>
+                  )}
+
+                  {!isCollapsed && group.category !== 'planli' && (
                     <ScaledBlock scale={rowScale}>
                     <div className="w-full overflow-x-auto">
                       <table
