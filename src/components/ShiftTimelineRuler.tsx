@@ -348,34 +348,34 @@ export const ShiftTimelineRuler: React.FC<ShiftTimelineRulerProps> = ({
         >
           {/* Base 28px Recessed 3D Ruler Track Anchored at Bottom */}
           <div
-            className="absolute inset-x-0 bottom-0 h-7 rounded-md border border-black/20 dark:border-white/15 overflow-hidden"
+            className="absolute inset-x-0 bottom-0 h-7 rounded-md border border-black/20 dark:border-white/15"
             style={{
               boxShadow:
                 'inset 0 3px 6px rgba(0,0,0,0.42), inset 0 -1px 0 rgba(255,255,255,0.22), 0 4px 10px rgba(0,0,0,0.26)',
             }}
           >
-            {/* Colored Active Shift Backdrop */}
             <div
-              className={`absolute inset-0 ${shift.backdropClass}`}
+              className="absolute inset-0 rounded-md overflow-hidden pointer-events-none"
               aria-hidden="true"
-            />
+            >
+              {/* Colored Active Shift Backdrop */}
+              <div className={`absolute inset-0 ${shift.backdropClass}`} />
 
-            {/* Live Elapsed Progress Bar */}
-            <div
-              className="absolute inset-y-0 left-0 rounded-l-md transition-all duration-1000 pointer-events-none"
-              style={{
-                width: `${currentPercent}%`,
-                background: shift.progressGradient,
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35)',
-              }}
-              aria-hidden="true"
-            />
+              {/* Live Elapsed Progress Bar */}
+              <div
+                className="absolute inset-y-0 left-0 transition-all duration-1000"
+                style={{
+                  width: `${currentPercent}%`,
+                  background: shift.progressGradient,
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35)',
+                }}
+              />
 
-            {/* Center Horizontal Axis Line */}
-            <div
-              className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] shadow-[0_1px_0_rgba(255,255,255,0.28)] ${shift.axisBg}`}
-              aria-hidden="true"
-            />
+              {/* Center Horizontal Axis Line */}
+              <div
+                className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] shadow-[0_1px_0_rgba(255,255,255,0.28)] ${shift.axisBg}`}
+              />
+            </div>
 
             {/* Graduated Ruler Tick Marks (every 15 min across 8 hours, with hour & half-hour labels) */}
             {Array.from({ length: TOTAL_QUARTERS + 1 }).map((_, idx) => {
